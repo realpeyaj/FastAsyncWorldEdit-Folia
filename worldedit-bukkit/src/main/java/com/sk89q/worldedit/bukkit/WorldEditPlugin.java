@@ -110,7 +110,7 @@ public class WorldEditPlugin extends JavaPlugin {
     private static final Logger LOGGER = LogManagerCompat.getLogger();
     public static final String CUI_PLUGIN_CHANNEL = "worldedit:cui";
     private static WorldEditPlugin INSTANCE;
-    private static final int BSTATS_ID = 1403;
+    private static final int BSTATS_ID = 33922;
 
     private final SimpleLifecycled<BukkitImplAdapter> adapter =
             SimpleLifecycled.invalid();
@@ -267,6 +267,8 @@ public class WorldEditPlugin extends JavaPlugin {
 
         // Enable metrics
         Metrics m = new Metrics(this, BSTATS_ID);
+        m.addCustomChart(new SimplePie("server_software", ()
+                -> FoliaUtil.isFoliaServer() ? "Folia" : "Paper"));
         // First introduced in build 349, release 2.5.2
         m.addCustomChart(new SimplePie("residence", ()
                 -> WEManager.weManager().getManagers().toString().contains("residence") ? "Yes" : "No"));
