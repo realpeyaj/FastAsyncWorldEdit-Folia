@@ -1,10 +1,9 @@
 # FAWElia - FastAsyncWorldEdit for Folia
 
-[![Platform](https://img.shields.io/badge/Platform-Folia%20%7C%20Paper-007acc?style=for-the-badge&logo=minecraft)](https://papermc.io/software/folia)
-[![Minecraft Version](https://img.shields.io/badge/Minecraft-26.X%20(26.1%20--%2026.2)-green?style=for-the-badge)](https://www.minecraft.net/)
-[![Java Version](https://img.shields.io/badge/Java-21%2B%20%2F%2025-orange?style=for-the-badge&logo=openjdk)](https://adoptium.net/)
-[![bStats Servers](https://img.shields.io/bstats/servers/33922?style=for-the-badge)](https://bstats.org/plugin/bukkit/FAWElia/33922)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/gpl-3.0)
+![Platform](https://img.shields.io/badge/Platform-Folia-green.svg)
+![Version](https://img.shields.io/badge/Version-26.X-green.svg)
+![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
+[![bStats](https://img.shields.io/bstats/servers/33922?color=blue)](https://bstats.org/plugin/bukkit/FAWElia/33922)
 
 A high-performance fork of [FastAsyncWorldEdit](https://github.com/IntellectualSites/FastAsyncWorldEdit) with full, native [Folia](https://github.com/PaperMC/Folia) multi-threaded region architecture support, tailored specifically for Minecraft 26.X (26.1 and 26.2).
 
