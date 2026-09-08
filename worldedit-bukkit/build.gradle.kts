@@ -185,7 +185,7 @@ tasks.register<ShadowJar>("reobfShadowJar") {
 }
 
 tasks.named<ShadowJar>("shadowJar") {
-    archiveFileName.set("${rootProject.name}-Paper-${project.version}.${archiveExtension.getOrElse("jar")}")
+    archiveFileName.set("FAWElia-${project.version}.${archiveExtension.getOrElse("jar")}")
     configurations.add(adapters)
     manifest {
         attributes(

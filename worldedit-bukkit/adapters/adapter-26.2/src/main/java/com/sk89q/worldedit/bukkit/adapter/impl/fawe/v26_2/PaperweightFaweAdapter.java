@@ -127,10 +127,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import com.fastasyncworldedit.core.util.FoliaUtil;
+import com.sk89q.worldedit.bukkit.WorldEditPlugin;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -561,6 +566,21 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         serverLevel.captureTreeGeneration = false;
         serverLevel.capturedBlockStates.clear();
     }
+
+    private <T> T syncRegion(World world, BlockVector3 pt, java.util.function.Supplier<T> supplier) {
+        if (FoliaUtil.isFoliaServer()) {
+            Location location = new Location(world, pt.x(), pt.y(), pt.z());
+            CompletableFuture<T> future = new CompletableFuture<>();
+            Bukkit.getServer().getRegionScheduler().run(
+                    WorldEditPlugin.getInstance(),
+                    location,
+                    scheduledTask -> future.complete(supplier.get())
+            );
+            return future.join();
+        }
+        return TaskManager.taskManager().sync(supplier);
+    }
+
     @Override
     public boolean generateFeature(ConfiguredFeatureType feature, World world, EditSession editSession, BlockVector3 pt) {
         ServerLevel serverLevel = getServerLevel(world);
@@ -572,7 +592,7 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                 .getValue(Identifier.tryParse(feature.id()));
 
         FaweBlockStateListPopulator populator = new FaweBlockStateListPopulator(serverLevel);
-        List<CraftBlockState> placed = TaskManager.taskManager().sync(() -> {
+        List<CraftBlockState> placed = syncRegion(world, pt, () -> {
             preCaptureStates(serverLevel);
             try {
                 if (!configuredFeature.place(
@@ -609,7 +629,7 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         TransformerLevelAccessor access = new TransformerLevelAccessor();
         FaweBlockStateListPopulator populator = new FaweBlockStateListPopulator(serverLevel);
         access.setDelegate(populator);
-        List<CraftBlockState> placed = TaskManager.taskManager().sync(() -> {
+        List<CraftBlockState> placed = syncRegion(world, pt, () -> {
             preCaptureStates(serverLevel);
             try {
                 StructureStart structureStart = structure.generate(

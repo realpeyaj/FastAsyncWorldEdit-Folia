@@ -1,100 +1,89 @@
-# FastAsyncWorldEdit
-[![Join us on Discord](https://img.shields.io/discord/268444645527126017.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/intellectualsites)
-[![bStats Servers](https://img.shields.io/bstats/servers/1403)](https://bstats.org/plugin/bukkit/FastAsyncWorldEdit/1403)
-[![Crowdin](https://badges.crowdin.net/e/4a5819fae3fd88234a8ea13bfbb072bb/localized.svg)](https://intellectualsites.crowdin.com/fastasyncworldedit)
+# FAWElia - FastAsyncWorldEdit for Folia
 
-## What is FAWE and why should I use it?
+[![Platform](https://img.shields.io/badge/Platform-Folia%20%7C%20Paper-007acc?style=for-the-badge&logo=minecraft)](https://papermc.io/software/folia)
+[![Minecraft Version](https://img.shields.io/badge/Minecraft-26.X%20(26.1%20--%2026.2)-green?style=for-the-badge)](https://www.minecraft.net/)
+[![Java Version](https://img.shields.io/badge/Java-21%2B%20%2F%2025-orange?style=for-the-badge&logo=openjdk)](https://adoptium.net/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/gpl-3.0)
 
-FAWE is designed for efficient world editing.
-* Simple to set up and use
-* Extremely configurable
-* Uses minimal CPU/Memory
-* Safe for many players to use
-* Insanely fast when using the slowest mode
+A high-performance fork of [FastAsyncWorldEdit](https://github.com/IntellectualSites/FastAsyncWorldEdit) with full, native [Folia](https://github.com/PaperMC/Folia) multi-threaded region architecture support, tailored specifically for Minecraft 26.X (26.1 and 26.2).
 
-FastAsyncWorldEdit is a fork of WorldEdit that has huge speed and memory improvements and considerably more features.  
-If you use other plugins that depend on WorldEdit, simply having FAWE installed will boost their performance.
+---
 
-## Support
+## Why FAWElia?
 
-If you have any questions or need help with something, please join our Discord server:
-[![](https://discordapp.com/api/guilds/268444645527126017/widget.png?style=banner2)](https://discord.gg/intellectualsites)
+Upstream FAWE is optimized for single-threaded main-loop servers (Paper/Spigot) and throws `UnsupportedOperationException` or crashes with data races when run on Folia due to Folia's threaded region model. 
 
-## Downloads
+FAWElia re-architects FAWE's scheduling and NMS adapters to comply fully with Folia region boundaries, allowing you to manipulate millions of blocks, paste massive schematics, and run complex brushes across multi-region servers at peak TPS.
 
-Releases are available either on Modrinth or on CurseForge.
-- [Modrinth](https://modrinth.com/plugin/fastasyncworldedit/)
-- [CurseForge](https://dev.bukkit.org/projects/fawe)
+### Folia Innovations and Architecture
 
-### Experimental Builds
-- [Jenkins](https://ci.athion.net/job/FastAsyncWorldEdit/)
+- **Region-Aware Scheduling**: All tile entity updates, block mutations, and beacon events dispatch to `Bukkit.getRegionScheduler()` anchored to exact world coordinates.
+- **Thread-Safe Entity Handling**: Entity spawning and removals run via `entity.getScheduler()`, completely avoiding main-thread lockups.
+- **Asynchronous Teleportation**: Player movements and unstuck operations leverage non-blocking `teleportAsync` without dangerous `.join()` stalls.
+- **Direct Packet Dispatching**: Chunk visual refresh packets are sent concurrently to nearby players without depending on the single-threaded server tick executor.
+- **Folia-Ready `//regen`**: World regeneration coordinates with Folia's regionized world initialization on the spawn chunk.
+- **Zero External Dependencies**: Implemented using internal `FoliaUtil` and `PaperSupport` without third-party shims.
+- **Streamlined 26.X Focus**: Legacy 1.21 modules and older Paperweight overhead are removed, drastically reducing compile times and allowing native builds with Java 25.
+
+---
+
+## Compatibility and Requirements
+
+| Platform | Supported Versions | Notes |
+|---|---|---|
+| **Folia** | `26.2`, `26.1` | Native multi-threaded regionized execution |
+| **Paper** | `26.2`, `26.1` | Full backwards compatibility with standard Paper |
+| **Java** | `21`, `25` | Java 21 or Java 25 runtime required |
+
+---
+
+## Installation
+
+1. Download the latest `FAWElia-*.jar` from [Releases](https://github.com/realpeyaj/FAWElia/releases) or Modrinth.
+2. Place the `.jar` into your server's `plugins/` folder.
+3. Start or restart your server.
+4. Look for the startup confirmation in your console:
+   ```log
+   [INFO]: [FastAsyncWorldEdit] Enabling FastAsyncWorldEdit v...
+   [INFO]: Using com.sk89q.worldedit.bukkit.adapter.impl.fawe.v26_2.PaperweightFaweAdapter as the Bukkit adapter
+   ```
+
+---
+
+## Building from Source
+
+Ensure you have Java 21 or Java 25 installed.
+
+```bash
+# Clone the repository
+git clone https://github.com/realpeyaj/FAWElia.git
+cd FAWElia
+
+# Build the shaded Folia plugin JAR
+./gradlew :worldedit-bukkit:shadowJar
+```
+
+The compiled JAR will be located at:
+```
+worldedit-bukkit/build/libs/FAWElia-2.15.5-SNAPSHOT.jar
+```
+
+---
 
 ## Features
 
-* Over 200 Commands
-* Style and translate messages and commands
-* (No setup required) Clipboard web integration (Clipboard)
-* Unlimited `//undo`, per-world history, instant lookups/rollback, and cross-server clipboards
-* Advanced per-player limits (entity, tiles, memory, changes, iterations, regions, inventory)
-* Visualization, targeting modes/masks, and scroll actions
-* Adds lots of powerful new //brushes and //tools.
-* Adds a lot more mask functionality. (new mask syntax, patterns, expressions, source masks)
-* Adds a lot more pattern functionality. (a lot of new pattern syntax and patterns)
-* Adds edit transforms (apply transforms to a source, e.g., on //paste)
-* Adds support for new formats (e.g. Structure Blocks)
-* Instant copying of arbitrary size with `//lazycopy`
-* Auto repair partially corrupt schematic files
-* Biome mixing, in-game world painting, dynamic view distance, vanilla CUI, off-axis rotation, image importing, cave generation,
-  multi-clipboards, interactive messages, schematic visualization, lag prevention, persistent brushes, and A LOT MORE
+All standard FastAsyncWorldEdit features are available on Folia:
+- Over 200 commands and expansive brush/tool sets
+- Unlimited `//undo` and `//redo` with per-world history
+- Fast chunk placement (NMS) with direct level section writes
+- Lazy copy (`//lazycopy`) for instant, low-memory clipboard handling
+- Masks, patterns, and transforms for advanced procedural generation
+- LZ4 and ZSTD compression for minimal memory footprint and fast disk caching
 
-### Performance
+---
 
-There are several placement modes, each supporting higher throughput than the previous. All editing is processed
-asynchronously, with
-certain tasks being broken up on the main thread. The default mode is chunk placement.
-* Blocks (Bukkit-API) - Only used if chunk placement isn't supported. Still faster than any other plugin on Spigot.
-* Chunks (NMS) - Places entire chunk sections
-* World (CFI) - Used to generate new worlds/regions
+## Credits and License
 
-### Protection Plugins
-
-The following plugins are supported with Bukkit:
-* [WorldGuard](https://dev.bukkit.org/projects/worldguard)
-* [PlotSquared](https://www.spigotmc.org/resources/77506/)
-
-### Logging and Rollback
-
-By default you can use `//inspect` and `//history rollback` to search and restore changes. To reduce disk usage, increase the
-compression level and buffer size. To bypass logging, use `//fast`.
-
-### Developer API
-
-FAWE maintains API compatibility with WorldEdit, so you can use the normal WorldEdit API asynchronously.
-FAWE also has some asynchronous wrappers for the Bukkit API.
-The wiki has examples for various things like reading NBT, modifying world files, pasting schematics, splitting up tasks, lighting, etc.
-If you need help with anything, hop on [Discord](https://discord.gg/intellectualsites).
-
-## Documentation
-
-* [Wiki](https://intellectualsites.github.io/fastasyncworldedit-documentation/)
-* [Javadocs](https://intellectualsites.github.io/fastasyncworldedit-javadocs/)
-
-## Contributing
-
-Want to add new features to FastAsyncWorldEdit or fix bugs yourself? You can get the game running, with FastAsyncWorldEdit, from the code here:
-
-For additional information about compiling FastAsyncWorldEdit, read the [compiling documentation](https://github.com/IntellectualSites/FastAsyncWorldEdit/blob/main/COMPILING.adoc).
-
-## Special thanks
-
-
-[![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSource)
-<br>
-The creators of IntelliJ IDEA support us with their Open Source Licenses.
-
-<a href="https://yourkit.com/"><img src="https://www.yourkit.com/images/yklogo.png" width="200">
-</a>
-
-Thank you to YourKit for supporting our product by providing us with their innovative and intelligent tools
-for monitoring and profiling Java and .NET applications.
-YourKit is the creator of [YourKit Java Profiler](https://www.yourkit.com/java/profiler/), [YourKit .NET Profiler](https://www.yourkit.com/.net/profiler/), and [YourKit YouMonitor](https://www.yourkit.com/youmonitor/).
+- Original FastAsyncWorldEdit by [IntellectualSites](https://github.com/IntellectualSites/FastAsyncWorldEdit) and contributors.
+- Original WorldEdit by sk89q and the EngineHub team.
+- Licensed under the GNU General Public License v3.0 (GPLv3).
