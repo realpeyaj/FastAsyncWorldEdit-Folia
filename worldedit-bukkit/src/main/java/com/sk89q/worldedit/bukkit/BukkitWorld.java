@@ -28,6 +28,7 @@ import com.fastasyncworldedit.core.internal.exception.FaweException;
 import com.fastasyncworldedit.core.nbt.FaweCompoundTag;
 import com.fastasyncworldedit.core.queue.IChunkGet;
 import com.fastasyncworldedit.core.queue.implementation.packet.ChunkPacket;
+import com.fastasyncworldedit.core.util.FoliaUtil;
 import com.fastasyncworldedit.core.util.TaskManager;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
@@ -65,6 +66,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Effect;
 import org.bukkit.TreeType;
 import org.bukkit.World;
+import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
@@ -73,6 +75,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 
 import java.lang.ref.WeakReference;
+import java.util.concurrent.CompletableFuture;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -145,11 +148,26 @@ public class BukkitWorld extends AbstractWorld {
         }
     }
 
+    private <T> T syncRegion(BlockVector3 position, java.util.function.Supplier<T> supplier) {
+        if (FoliaUtil.isFoliaServer()) {
+            World world = getWorld();
+            Location location = new Location(world, position.x(), position.y(), position.z());
+            CompletableFuture<T> future = new CompletableFuture<>();
+            Bukkit.getServer().getRegionScheduler().run(
+                    WorldEditPlugin.getInstance(),
+                    location,
+                    scheduledTask -> future.complete(supplier.get())
+            );
+            return future.join();
+        }
+        return TaskManager.taskManager().sync(supplier);
+    }
+
     @Override
     public List<com.sk89q.worldedit.entity.Entity> getEntities(Region region) {
         World world = getWorld();
 
-        List<Entity> ents = TaskManager.taskManager().sync(world::getEntities);
+        List<Entity> ents = syncRegion(region.getMinimumPoint(), world::getEntities);
         List<com.sk89q.worldedit.entity.Entity> entities = new ArrayList<>();
         for (Entity ent : ents) {
             if (region.contains(BukkitAdapter.asBlockVector(ent.getLocation()))) {
@@ -163,7 +181,7 @@ public class BukkitWorld extends AbstractWorld {
     public List<com.sk89q.worldedit.entity.Entity> getEntities() {
         List<com.sk89q.worldedit.entity.Entity> list = new ArrayList<>();
 
-        List<Entity> ents = TaskManager.taskManager().sync(getWorld()::getEntities);
+        List<Entity> ents = syncRegion(BlockVector3.ZERO, getWorld()::getEntities);
         for (Entity entity : ents) {
             list.add(BukkitAdapter.adapt(entity));
         }
@@ -173,7 +191,7 @@ public class BukkitWorld extends AbstractWorld {
     @Override
     public int removeEntities(final Region region) {
         List<com.sk89q.worldedit.entity.Entity> entities = getEntities(region);
-        return TaskManager.taskManager().sync(() -> entities.stream()
+        return syncRegion(region.getMinimumPoint(), () -> entities.stream()
                 .mapToInt(entity -> entity.remove() ? 1 : 0).sum()
         );
     }

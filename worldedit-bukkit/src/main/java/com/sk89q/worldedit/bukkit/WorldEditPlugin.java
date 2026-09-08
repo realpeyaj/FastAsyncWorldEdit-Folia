@@ -22,6 +22,7 @@ package com.sk89q.worldedit.bukkit;
 import com.fastasyncworldedit.bukkit.BukkitPermissionAttachmentManager;
 import com.fastasyncworldedit.bukkit.FaweBukkit;
 import com.fastasyncworldedit.bukkit.util.PaperSupport;
+import com.fastasyncworldedit.core.util.FoliaUtil;
 import com.fastasyncworldedit.core.Fawe;
 import com.fastasyncworldedit.core.util.UpdateNotification;
 import com.fastasyncworldedit.core.util.WEManager;
@@ -452,7 +453,9 @@ public class WorldEditPlugin extends JavaPlugin {
         if (config != null) {
             config.unload();
         }
-        this.getServer().getScheduler().cancelTasks(this);
+        if (!FoliaUtil.isFoliaServer()) {
+            this.getServer().getScheduler().cancelTasks(this);
+        }
     }
 
     /**
