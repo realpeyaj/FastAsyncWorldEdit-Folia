@@ -110,7 +110,7 @@ public class WorldEditPlugin extends JavaPlugin {
     private static final Logger LOGGER = LogManagerCompat.getLogger();
     public static final String CUI_PLUGIN_CHANNEL = "worldedit:cui";
     private static WorldEditPlugin INSTANCE;
-    private static final int BSTATS_ID = 33922;
+    private static final int BSTATS_ID = 1403;
 
     private final SimpleLifecycled<BukkitImplAdapter> adapter =
             SimpleLifecycled.invalid();
