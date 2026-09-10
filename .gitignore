@@ -37,3 +37,4 @@ worldedit-core/src/main/resources/lang/*
 ### Run server ignore
 run-*
 .agent/
+.vscode/
