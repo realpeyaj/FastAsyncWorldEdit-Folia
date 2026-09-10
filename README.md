@@ -1,7 +1,9 @@
 # FAWElia - FastAsyncWorldEdit for Folia
 
-![Platform](https://img.shields.io/badge/Platform-Folia-green.svg)
-![Version](https://img.shields.io/badge/Version-26.X-green.svg)
+![Java](https://img.shields.io/badge/Java-21%20%7C%2025-orange.svg)
+![Platform](https://img.shields.io/badge/Platform-Folia-blue.svg)
+![Minecraft](https://img.shields.io/badge/Minecraft-26.X-brightgreen.svg)
+![Version](https://img.shields.io/badge/Version-2.15.5--SNAPSHOT-green.svg)
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
 [![bStats](https://img.shields.io/bstats/servers/33922?color=blue)](https://bstats.org/plugin/bukkit/FAWElia/33922)
 
