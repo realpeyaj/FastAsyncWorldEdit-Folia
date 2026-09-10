@@ -362,9 +362,20 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
     @Override
     public BaseEntity getEntity(org.bukkit.entity.Entity entity) {
         Preconditions.checkNotNull(entity);
+        if (FoliaUtil.isFoliaServer()) {
+            org.bukkit.Location loc = entity.getLocation();
+            if (!Bukkit.isOwnedByCurrentRegion(loc)) {
+                return null;
+            }
+        }
 
         CraftEntity craftEntity = ((CraftEntity) entity);
-        Entity mcEntity = craftEntity.getHandle();
+        Entity mcEntity;
+        try {
+            mcEntity = craftEntity.getHandle();
+        } catch (Throwable t) {
+            return null;
+        }
 
         String id = getEntityId(mcEntity);
         EntityType type = com.sk89q.worldedit.world.entity.EntityTypes.get(id);
@@ -561,9 +572,29 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         return CraftItemStack.asCraftMirror(stack);
     }
 
+    private static final java.lang.invoke.MethodHandle CAPTURE_TREE_SETTER;
+    static {
+        java.lang.invoke.MethodHandle setter = null;
+        try {
+            var field = ServerLevel.class.getField("captureTreeGeneration");
+            setter = java.lang.invoke.MethodHandles.lookup().unreflectSetter(field);
+        } catch (Throwable ignored) {
+        }
+        CAPTURE_TREE_SETTER = setter;
+    }
+
+    private static void setCaptureTreeGeneration(ServerLevel level, boolean value) {
+        if (CAPTURE_TREE_SETTER != null) {
+            try {
+                CAPTURE_TREE_SETTER.invokeExact(level, value);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
     @Override
     protected void preCaptureStates(final ServerLevel serverLevel) {
-        serverLevel.captureTreeGeneration = true;
+        setCaptureTreeGeneration(serverLevel, true);
         serverLevel.captureBlockStates = true;
     }
 
@@ -575,7 +606,7 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
     @Override
     protected void postCaptureBlockStates(final ServerLevel serverLevel) {
         serverLevel.captureBlockStates = false;
-        serverLevel.captureTreeGeneration = false;
+        setCaptureTreeGeneration(serverLevel, false);
         serverLevel.capturedBlockStates.clear();
     }
 
@@ -711,7 +742,7 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                 .getValue(Identifier.tryParse(treeType.id()));
 
         FaweBlockStateListPopulator populator = new FaweBlockStateListPopulator(serverLevel);
-        List<CraftBlockState> placed = TaskManager.taskManager().sync(() -> {
+        List<CraftBlockState> placed = syncRegion(world, pt, () -> {
             preCaptureStates(serverLevel);
             try {
                 if (!placedFeature.place(

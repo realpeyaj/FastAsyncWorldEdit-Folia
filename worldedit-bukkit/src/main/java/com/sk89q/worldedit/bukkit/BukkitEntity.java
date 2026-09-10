@@ -29,6 +29,7 @@ import com.sk89q.worldedit.entity.metadata.EntityProperties;
 import com.sk89q.worldedit.extent.Extent;
 import com.sk89q.worldedit.util.Location;
 import com.sk89q.worldedit.world.NullWorld;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.EntityType;
 
 import javax.annotation.Nullable;
@@ -102,10 +103,20 @@ public class BukkitEntity implements Entity {
             if (entity instanceof Player) {
                 return null;
             }
+            if (FoliaUtil.isFoliaServer()) {
+                org.bukkit.Location loc = entity.getLocation();
+                if (!Bukkit.isOwnedByCurrentRegion(loc)) {
+                    return null;
+                }
+            }
 
             BukkitImplAdapter adapter = WorldEditPlugin.getInstance().getBukkitImplAdapter();
             if (adapter != null) {
-                return adapter.getEntity(entity);
+                try {
+                    return adapter.getEntity(entity);
+                } catch (Throwable t) {
+                    return null;
+                }
             } else {
                 return null;
             }
