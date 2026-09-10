@@ -76,6 +76,9 @@ import org.bukkit.inventory.InventoryHolder;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -157,9 +160,24 @@ public class BukkitWorld extends AbstractWorld {
             Bukkit.getServer().getRegionScheduler().run(
                     WorldEditPlugin.getInstance(),
                     location,
-                    scheduledTask -> future.complete(supplier.get())
+                    scheduledTask -> {
+                        try {
+                            future.complete(supplier.get());
+                        } catch (Exception e) {
+                            future.completeExceptionally(e);
+                        }
+                    }
             );
-            return future.join();
+            try {
+                return future.get(10, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOGGER.error("syncRegion task interrupted in BukkitWorld at {}", position);
+                return null;
+            } catch (ExecutionException | TimeoutException e) {
+                LOGGER.error("Failed to execute syncRegion in BukkitWorld at {}: {}", position, e.getMessage());
+                return null;
+            }
         }
         return TaskManager.taskManager().sync(supplier);
     }
@@ -201,7 +219,7 @@ public class BukkitWorld extends AbstractWorld {
                                     } else {
                                         chunkFuture.complete(Collections.emptyList());
                                     }
-                                } catch (Throwable t) {
+                                } catch (Exception e) {
                                     chunkFuture.complete(Collections.emptyList());
                                 }
                             }
@@ -212,8 +230,11 @@ public class BukkitWorld extends AbstractWorld {
             List<com.sk89q.worldedit.entity.Entity> result = new ArrayList<>();
             for (CompletableFuture<List<com.sk89q.worldedit.entity.Entity>> future : futures) {
                 try {
-                    result.addAll(future.get(5, java.util.concurrent.TimeUnit.SECONDS));
-                } catch (Throwable ignored) {
+                    result.addAll(future.get(5, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException | TimeoutException e) {
+                    LOGGER.debug("Failed to retrieve chunk entities on Folia: {}", e.getMessage());
                 }
             }
             return result;

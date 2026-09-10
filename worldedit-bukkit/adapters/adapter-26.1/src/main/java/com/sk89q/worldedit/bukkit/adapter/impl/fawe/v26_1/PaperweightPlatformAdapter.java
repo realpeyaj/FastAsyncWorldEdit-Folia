@@ -684,15 +684,18 @@ public final class PaperweightPlatformAdapter extends NMSAdapter {
                                 future.complete(Optional.ofNullable(chunk.level
                                         .moonrise$getEntityLookup()
                                         .getChunk(chunk.locX, chunk.locZ)).map(ChunkEntitySlices::getAllEntities).orElse(Collections.emptyList()));
-                            } catch (Throwable t) {
+                            } catch (Exception e) {
                                 future.complete(Collections.emptyList());
                             }
                         }
                 );
                 try {
                     return future.get(5, java.util.concurrent.TimeUnit.SECONDS);
-                } catch (Throwable t) {
-                    LOGGER.warn("Failed to get entities for chunk {},{} on Folia: {}", chunk.locX, chunk.locZ, t.getMessage());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return Collections.emptyList();
+                } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException e) {
+                    LOGGER.warn("Failed to get entities for chunk {},{} on Folia: {}", chunk.locX, chunk.locZ, e.getMessage());
                     return Collections.emptyList();
                 }
             }

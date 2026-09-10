@@ -22,7 +22,9 @@ package com.sk89q.worldedit.bukkit.adapter.impl.v26_1;
 import com.fastasyncworldedit.bukkit.util.PaperSupport;
 import com.fastasyncworldedit.core.util.FoliaUtil;
 import com.sk89q.worldedit.bukkit.WorldEditPlugin;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -567,14 +569,17 @@ public final class PaperweightAdapter implements BukkitImplAdapter<Tag> {
                                 try {
                                     worldServer.addFreshEntityWithPassengers(createdEntity, SpawnReason.CUSTOM);
                                     future.complete(createdEntity.getBukkitEntity());
-                                } catch (Throwable t) {
+                                } catch (Exception e) {
                                     future.complete(null);
                                 }
                             }
                     );
                     try {
                         return future.get(5, TimeUnit.SECONDS);
-                    } catch (Throwable t) {
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return null;
+                    } catch (ExecutionException | TimeoutException e) {
                         return null;
                     }
                 }

@@ -383,12 +383,14 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         if (CRAFT_ENTITY_HANDLE != null) {
             try {
                 return (Entity) CRAFT_ENTITY_HANDLE.get(craftEntity);
-            } catch (Throwable ignored) {
+            } catch (IllegalAccessException e) {
+                LOGGER.debug("Failed to get direct entity handle from CraftEntity", e);
             }
         }
         try {
             return craftEntity.getHandle();
-        } catch (Throwable ignored) {
+        } catch (Exception e) {
+            LOGGER.debug("Failed to getHandle from CraftEntity", e);
             return null;
         }
     }
@@ -396,25 +398,20 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
     @Override
     public BaseEntity getEntity(org.bukkit.entity.Entity entity) {
         Preconditions.checkNotNull(entity);
-
         CraftEntity craftEntity = entity instanceof CraftEntity ce ? ce : null;
         Entity mcEntity = craftEntity != null ? getHandleDirect(craftEntity) : null;
+        EntityType type = BukkitAdapter.adapt(entity.getType());
+        String fallbackId = entity.getType().getKey().toString();
+        String id = mcEntity != null ? BuiltInRegistries.ENTITY_TYPE.getKey(mcEntity.getType()).toString() : fallbackId;
 
-        String id;
-        if (mcEntity != null) {
-            id = getEntityId(mcEntity);
-        } else {
-            id = entity.getType().getKey().toString();
-        }
-        EntityType type = com.sk89q.worldedit.world.entity.EntityTypes.get(id);
         Supplier<LinCompoundTag> saveTag = () -> {
             Supplier<LinCompoundTag> internalSave = () -> {
                 final LinValueOutput output = createOutput();
                 if (mcEntity != null) {
                     try {
                         mcEntity.save(output);
-                    } catch (Throwable t) {
-                        LOGGER.warn("Failed to serialize entity NBT for {}: {}", id, t.getMessage());
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to serialize entity NBT for {}: {}", id, e.getMessage());
                     }
                 }
                 // add Id for AbstractChangeSet to work
@@ -425,14 +422,14 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                 if (Bukkit.isOwnedByCurrentRegion(entity)) {
                     return internalSave.get();
                 }
-                java.util.concurrent.CompletableFuture<LinCompoundTag> future = new java.util.concurrent.CompletableFuture<>();
+                CompletableFuture<LinCompoundTag> future = new CompletableFuture<>();
                 Object scheduled = entity.getScheduler().run(
                         WorldEditPlugin.getInstance(),
                         task -> {
                             try {
                                 future.complete(internalSave.get());
-                            } catch (Throwable t) {
-                                future.completeExceptionally(t);
+                            } catch (Exception e) {
+                                future.completeExceptionally(e);
                             }
                         },
                         () -> future.complete(null)
@@ -447,8 +444,8 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                             task -> {
                                 try {
                                     future.complete(internalSave.get());
-                                } catch (Throwable t) {
-                                    future.completeExceptionally(t);
+                                } catch (Exception e) {
+                                    future.completeExceptionally(e);
                                 }
                             }
                     );
@@ -458,8 +455,11 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                     if (res != null) {
                         return res;
                     }
-                } catch (Throwable t) {
-                    LOGGER.error("Failed to serialize entity on Folia region thread", t);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    LOGGER.warn("Interrupted while serializing entity {} on Folia region thread", id);
+                } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException e) {
+                    LOGGER.warn("Failed to serialize entity {} on Folia region thread: {}", id, e.getMessage());
                 }
                 return LinCompoundTag.builder().putString("Id", id).build();
             }
@@ -680,17 +680,17 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         try {
             var field = ServerLevel.class.getField("captureTreeGeneration");
             treeSetter = java.lang.invoke.MethodHandles.lookup().unreflectSetter(field);
-        } catch (Throwable ignored) {
+        } catch (ReflectiveOperationException ignored) {
         }
         try {
             var field = ServerLevel.class.getField("captureBlockStates");
             blockSetter = java.lang.invoke.MethodHandles.lookup().unreflectSetter(field);
-        } catch (Throwable ignored) {
+        } catch (ReflectiveOperationException ignored) {
         }
         try {
             var field = ServerLevel.class.getField("capturedBlockStates");
             capturedGetter = java.lang.invoke.MethodHandles.lookup().unreflectGetter(field);
-        } catch (Throwable ignored) {
+        } catch (ReflectiveOperationException ignored) {
         }
         CAPTURE_TREE_SETTER = treeSetter;
         CAPTURE_BLOCK_STATES_SETTER = blockSetter;
@@ -701,7 +701,8 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         if (CAPTURE_TREE_SETTER != null) {
             try {
                 CAPTURE_TREE_SETTER.invokeExact(level, value);
-            } catch (Throwable ignored) {
+            } catch (Throwable e) {
+                LOGGER.debug("Failed to set captureTreeGeneration on ServerLevel", e);
             }
         }
     }
@@ -710,7 +711,8 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         if (CAPTURE_BLOCK_STATES_SETTER != null) {
             try {
                 CAPTURE_BLOCK_STATES_SETTER.invokeExact(level, value);
-            } catch (Throwable ignored) {
+            } catch (Throwable e) {
+                LOGGER.debug("Failed to set captureBlockStates on ServerLevel", e);
             }
         }
     }
@@ -720,7 +722,8 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         if (CAPTURED_BLOCK_STATES_GETTER != null) {
             try {
                 return (Map<BlockPos, org.bukkit.block.BlockState>) CAPTURED_BLOCK_STATES_GETTER.invokeExact(level);
-            } catch (Throwable ignored) {
+            } catch (Throwable e) {
+                LOGGER.debug("Failed to get capturedBlockStates from ServerLevel", e);
             }
         }
         return null;
@@ -765,8 +768,12 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
             );
             try {
                 return future.get(10, java.util.concurrent.TimeUnit.SECONDS);
-            } catch (Throwable t) {
-                LOGGER.error("Failed to execute syncRegion task on Folia", t);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOGGER.error("syncRegion task interrupted on Folia at {}", pt, e);
+                return null;
+            } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException e) {
+                LOGGER.error("Failed to execute syncRegion task on Folia at {}", pt, e);
                 return null;
             }
         }
