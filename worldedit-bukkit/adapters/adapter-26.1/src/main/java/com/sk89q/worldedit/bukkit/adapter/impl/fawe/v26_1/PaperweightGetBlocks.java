@@ -603,22 +603,17 @@ public class PaperweightGetBlocks extends AbstractBukkitGetBlocks<ServerLevel, L
                 final List<BlockPos> finalBeaconPositions = beaconPositions;
 
                 if (FoliaUtil.isFoliaServer()) {
-                    for (BlockPos beaconPos : finalBeaconPositions) {
-                        Location location = new Location(
-                                nmsWorld.getWorld(),
-                                beaconPos.getX(),
-                                beaconPos.getY(),
-                                beaconPos.getZ()
-                        );
-                        Bukkit.getServer().getRegionScheduler().execute(
-                                WorldEditPlugin.getInstance(),
-                                location,
-                                () -> {
+                    Location location = new Location(nmsWorld.getWorld(), bx, 0, bz);
+                    Bukkit.getServer().getRegionScheduler().execute(
+                            WorldEditPlugin.getInstance(),
+                            location,
+                            () -> {
+                                for (BlockPos beaconPos : finalBeaconPositions) {
                                     BeaconBlockEntity.playSound(nmsWorld, beaconPos, SoundEvents.BEACON_DEACTIVATE);
                                     new BeaconDeactivatedEvent(CraftBlock.at(nmsWorld, beaconPos)).callEvent();
                                 }
-                        );
-                    }
+                            }
+                    );
                 } else {
                     syncTasks.add(() -> {
                         for (BlockPos beaconPos : finalBeaconPositions) {
@@ -665,6 +660,7 @@ public class PaperweightGetBlocks extends AbstractBukkitGetBlocks<ServerLevel, L
             if (entities != null && !entities.isEmpty()) {
 
                 syncTasks.add(() -> {
+                    List<Runnable> foliaSpawnActions = FoliaUtil.isFoliaServer() ? new ArrayList<>() : null;
                     Iterator<FaweCompoundTag> iterator = entities.iterator();
                     while (iterator.hasNext()) {
                         final FaweCompoundTag nativeTag = iterator.next();
@@ -728,14 +724,21 @@ public class PaperweightGetBlocks extends AbstractBukkitGetBlocks<ServerLevel, L
                                         iterator.remove();
                                     }
                                 };
-                                if (FoliaUtil.isFoliaServer()) {
-                                    Location location = new Location(nmsWorld.getWorld(), x, y, z);
-                                    Bukkit.getServer().getRegionScheduler().execute(WorldEditPlugin.getInstance(), location, spawnAction);
+                                if (foliaSpawnActions != null) {
+                                    foliaSpawnActions.add(spawnAction);
                                 } else {
                                     spawnAction.run();
                                 }
                             }
                         }
+                    }
+                    if (foliaSpawnActions != null && !foliaSpawnActions.isEmpty()) {
+                        Location location = new Location(nmsWorld.getWorld(), bx, 0, bz);
+                        Bukkit.getServer().getRegionScheduler().execute(WorldEditPlugin.getInstance(), location, () -> {
+                            for (Runnable action : foliaSpawnActions) {
+                                action.run();
+                            }
+                        });
                     }
                 });
             }
@@ -745,15 +748,39 @@ public class PaperweightGetBlocks extends AbstractBukkitGetBlocks<ServerLevel, L
             if (tiles != null && !tiles.isEmpty()) {
 
                 syncTasks.add(() -> {
-                    for (final Map.Entry<BlockVector3, FaweCompoundTag> entry : tiles.entrySet()) {
-                        final FaweCompoundTag nativeTag = entry.getValue();
-                        final BlockVector3 blockHash = entry.getKey();
-                        final int x = blockHash.x() + bx;
-                        final int y = blockHash.y();
-                        final int z = blockHash.z() + bz;
-                        final BlockPos pos = new BlockPos(x, y, z);
+                    if (FoliaUtil.isFoliaServer()) {
+                        Location location = new Location(nmsWorld.getWorld(), bx, 0, bz);
+                        Bukkit.getServer().getRegionScheduler().execute(WorldEditPlugin.getInstance(), location, () -> {
+                            for (final Map.Entry<BlockVector3, FaweCompoundTag> entry : tiles.entrySet()) {
+                                final FaweCompoundTag nativeTag = entry.getValue();
+                                final BlockVector3 blockHash = entry.getKey();
+                                final int x = blockHash.x() + bx;
+                                final int y = blockHash.y();
+                                final int z = blockHash.z() + bz;
+                                final BlockPos pos = new BlockPos(x, y, z);
+                                BlockEntity tileEntity = nmsWorld.getBlockEntity(pos);
+                                if (tileEntity == null || tileEntity.isRemoved()) {
+                                    nmsWorld.removeBlockEntity(pos);
+                                    tileEntity = nmsWorld.getBlockEntity(pos);
+                                }
+                                if (tileEntity != null) {
+                                    ValueInput input = createInput(nativeTag.linTag().toBuilder()
+                                            .putInt("x", x).putInt("y", y).putInt("z", z)
+                                            .build()
+                                    );
+                                    tileEntity.loadWithComponents(input);
+                                }
+                            }
+                        });
+                    } else {
+                        for (final Map.Entry<BlockVector3, FaweCompoundTag> entry : tiles.entrySet()) {
+                            final FaweCompoundTag nativeTag = entry.getValue();
+                            final BlockVector3 blockHash = entry.getKey();
+                            final int x = blockHash.x() + bx;
+                            final int y = blockHash.y();
+                            final int z = blockHash.z() + bz;
+                            final BlockPos pos = new BlockPos(x, y, z);
 
-                        Runnable tileAction = () -> {
                             synchronized (nmsWorld) {
                                 BlockEntity tileEntity = nmsWorld.getBlockEntity(pos);
                                 if (tileEntity == null || tileEntity.isRemoved()) {
@@ -768,12 +795,6 @@ public class PaperweightGetBlocks extends AbstractBukkitGetBlocks<ServerLevel, L
                                     tileEntity.loadWithComponents(input);
                                 }
                             }
-                        };
-                        if (FoliaUtil.isFoliaServer()) {
-                            Location location = new Location(nmsWorld.getWorld(), x, y, z);
-                            Bukkit.getServer().getRegionScheduler().execute(WorldEditPlugin.getInstance(), location, tileAction);
-                        } else {
-                            tileAction.run();
                         }
                     }
                 });

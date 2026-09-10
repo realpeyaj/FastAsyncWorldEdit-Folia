@@ -156,6 +156,9 @@ public class BukkitWorld extends AbstractWorld {
         if (FoliaUtil.isFoliaServer()) {
             World world = getWorld();
             Location location = new Location(world, position.x(), position.y(), position.z());
+            if (Bukkit.isOwnedByCurrentRegion(location)) {
+                return supplier.get();
+            }
             CompletableFuture<T> future = new CompletableFuture<>();
             Bukkit.getServer().getRegionScheduler().run(
                     WorldEditPlugin.getInstance(),
@@ -228,13 +231,19 @@ public class BukkitWorld extends AbstractWorld {
                 }
             }
             List<com.sk89q.worldedit.entity.Entity> result = new ArrayList<>();
-            for (CompletableFuture<List<com.sk89q.worldedit.entity.Entity>> future : futures) {
+            if (!futures.isEmpty()) {
                 try {
-                    result.addAll(future.get(5, TimeUnit.SECONDS));
+                    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(10, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                } catch (ExecutionException | TimeoutException e) {
-                    LOGGER.debug("Failed to retrieve chunk entities on Folia: {}", e.getMessage());
+                } catch (Exception e) {
+                    LOGGER.debug("Multi-chunk entity query completed with partial results: {}", e.getMessage());
+                }
+                for (CompletableFuture<List<com.sk89q.worldedit.entity.Entity>> future : futures) {
+                    List<com.sk89q.worldedit.entity.Entity> chunkEntities = future.getNow(Collections.emptyList());
+                    if (chunkEntities != null) {
+                        result.addAll(chunkEntities);
+                    }
                 }
             }
             return result;

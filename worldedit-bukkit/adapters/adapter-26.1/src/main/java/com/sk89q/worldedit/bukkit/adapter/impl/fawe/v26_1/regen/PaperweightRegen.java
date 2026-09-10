@@ -36,6 +36,9 @@ import org.bukkit.World;
 import org.bukkit.craftbukkit.CraftServer;
 import org.bukkit.craftbukkit.CraftWorld;
 import org.bukkit.craftbukkit.persistence.CraftPersistentDataContainer;
+import com.fastasyncworldedit.core.util.FoliaUtil;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import org.bukkit.generator.BiomeProvider;
 
 import javax.annotation.Nonnull;
@@ -147,7 +150,11 @@ public class PaperweightRegen extends Regenerator {
 
         BiomeProvider biomeProvider = getBiomeProvider();
 
-        SavedDataStorage savedDataStorage = new SavedDataStorage(session.getDimensionPath(originalServerWorld.dimension())
+        ResourceKey<Level> dimensionKey = FoliaUtil.isFoliaServer()
+                ? ResourceKey.create(Registries.DIMENSION, Identifier.parse("fastasyncworldedit:faweregentempworld"))
+                : originalServerWorld.dimension();
+
+        SavedDataStorage savedDataStorage = new SavedDataStorage(session.getDimensionPath(dimensionKey)
                 .resolve(LevelResource.DATA.id()), server.getFixerUpper(), server.registryAccess());
 
         //init world
@@ -156,7 +163,7 @@ public class PaperweightRegen extends Regenerator {
                 server.executor,
                 session,
                 newWorldGenSettings,
-                originalServerWorld.dimension(),
+                dimensionKey,
                 new LevelStem(
                         originalServerWorld.dimensionTypeRegistration(),
                         originalServerWorld.getChunkSource().getGenerator()
@@ -262,6 +269,7 @@ public class PaperweightRegen extends Regenerator {
         try {
             Map<String, World> map = (Map<String, World>) serverWorldsField.get(Bukkit.getServer());
             map.remove(REGEN_WORLD_NAME);
+            map.remove("fastasyncworldedit:faweregentempworld");
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
         }

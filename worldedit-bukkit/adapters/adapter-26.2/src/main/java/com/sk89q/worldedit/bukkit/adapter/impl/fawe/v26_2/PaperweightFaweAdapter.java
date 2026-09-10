@@ -754,6 +754,9 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
     private <T> T syncRegion(World world, BlockVector3 pt, java.util.function.Supplier<T> supplier) {
         if (FoliaUtil.isFoliaServer()) {
             Location location = new Location(world, pt.x(), pt.y(), pt.z());
+            if (Bukkit.isOwnedByCurrentRegion(location)) {
+                return supplier.get();
+            }
             CompletableFuture<T> future = new CompletableFuture<>();
             Bukkit.getServer().getRegionScheduler().run(
                     WorldEditPlugin.getInstance(),

@@ -43,6 +43,7 @@ public abstract class Regenerator {
 
     //runtime
     protected long seed;
+    private io.papermc.paper.threadedregions.scheduler.ScheduledTask foliaRegenTask;
     protected SingleThreadQueueExtent source;
 
     /**
@@ -109,13 +110,11 @@ public abstract class Regenerator {
     private void copyToWorld() {
         createSource();
         final long timeoutPerTick = TimeUnit.MILLISECONDS.toNanos(10);
-        int taskId;
+        int taskId = -1;
         if (FoliaUtil.isFoliaServer()) {
-            World freshWorld = getFreshWorld();
-            World world = freshWorld != null ? freshWorld : originalBukkitWorld;
             BlockVector3 min = region.getMinimumPoint();
-            Location location = new Location(world, min.x(), min.y(), min.z());
-            var task = Bukkit.getServer().getRegionScheduler().runAtFixedRate(
+            Location location = new Location(originalBukkitWorld, min.x(), min.y(), min.z());
+            foliaRegenTask = Bukkit.getServer().getRegionScheduler().runAtFixedRate(
                     WorldEditPlugin.getInstance(),
                     location,
                     scheduledTask -> {
@@ -125,7 +124,6 @@ public abstract class Regenerator {
                     1,
                     1
             );
-            taskId = System.identityHashCode(task);
         } else {
             taskId = TaskManager.taskManager().repeat(() -> {
                 final long startTime = System.nanoTime();
@@ -149,8 +147,16 @@ public abstract class Regenerator {
                 return source.getBiome(vec);
             });
         }
-        target.setBlocks(region, pattern);
-        TaskManager.taskManager().cancel(taskId);
+        try {
+            target.setBlocks(region, pattern);
+        } finally {
+            if (foliaRegenTask != null) {
+                foliaRegenTask.cancel();
+                foliaRegenTask = null;
+            } else if (taskId != -1) {
+                TaskManager.taskManager().cancel(taskId);
+            }
+        }
     }
 
     /**
@@ -241,6 +247,10 @@ public abstract class Regenerator {
 
     //functions to be implemented by sub class
     private void cleanup0() {
+        if (foliaRegenTask != null) {
+            foliaRegenTask.cancel();
+            foliaRegenTask = null;
+        }
         cleanup();
     }
 

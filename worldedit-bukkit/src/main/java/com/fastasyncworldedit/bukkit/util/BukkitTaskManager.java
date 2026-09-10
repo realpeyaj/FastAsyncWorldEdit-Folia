@@ -2,15 +2,21 @@ package com.fastasyncworldedit.bukkit.util;
 
 import com.fastasyncworldedit.core.util.FoliaUtil;
 import com.fastasyncworldedit.core.util.TaskManager;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
 import javax.annotation.Nonnull;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class BukkitTaskManager extends TaskManager {
 
     private final Plugin plugin;
+    private final Map<Integer, ScheduledTask> foliaTasks = new ConcurrentHashMap<>();
+    private final AtomicInteger taskIdCounter = new AtomicInteger(1);
 
     public BukkitTaskManager(final Plugin plugin) {
         this.plugin = plugin;
@@ -19,8 +25,21 @@ public class BukkitTaskManager extends TaskManager {
     @Override
     public int repeat(@Nonnull final Runnable runnable, final int interval) {
         if (FoliaUtil.isFoliaServer()) {
-            this.plugin.getServer().getGlobalRegionScheduler().runAtFixedRate(this.plugin, scheduledTask -> runnable.run(), interval, interval);
-            return 0;
+            int taskId = taskIdCounter.getAndIncrement();
+            ScheduledTask task = this.plugin.getServer().getGlobalRegionScheduler().runAtFixedRate(
+                    this.plugin,
+                    scheduledTask -> {
+                        if (scheduledTask.isCancelled()) {
+                            foliaTasks.remove(taskId);
+                            return;
+                        }
+                        runnable.run();
+                    },
+                    interval,
+                    interval
+            );
+            foliaTasks.put(taskId, task);
+            return taskId;
         }
         return this.plugin.getServer().getScheduler().scheduleSyncRepeatingTask(this.plugin, runnable, interval, interval);
     }
@@ -28,8 +47,22 @@ public class BukkitTaskManager extends TaskManager {
     @Override
     public int repeatAsync(@Nonnull final Runnable runnable, final int interval) {
         if (FoliaUtil.isFoliaServer()) {
-            this.plugin.getServer().getAsyncScheduler().runAtFixedRate(this.plugin, scheduledTask -> runnable.run(), interval * 50L, interval * 50L, TimeUnit.MILLISECONDS);
-            return 0;
+            int taskId = taskIdCounter.getAndIncrement();
+            ScheduledTask task = this.plugin.getServer().getAsyncScheduler().runAtFixedRate(
+                    this.plugin,
+                    scheduledTask -> {
+                        if (scheduledTask.isCancelled()) {
+                            foliaTasks.remove(taskId);
+                            return;
+                        }
+                        runnable.run();
+                    },
+                    interval * 50L,
+                    interval * 50L,
+                    TimeUnit.MILLISECONDS
+            );
+            foliaTasks.put(taskId, task);
+            return taskId;
         }
         return this.plugin.getServer().getScheduler().scheduleAsyncRepeatingTask(this.plugin, runnable, interval, interval);
     }
@@ -82,6 +115,10 @@ public class BukkitTaskManager extends TaskManager {
     public void cancel(final int task) {
         if (task != -1) {
             if (FoliaUtil.isFoliaServer()) {
+                ScheduledTask scheduledTask = foliaTasks.remove(task);
+                if (scheduledTask != null) {
+                    scheduledTask.cancel();
+                }
                 return;
             }
             Bukkit.getScheduler().cancelTask(task);

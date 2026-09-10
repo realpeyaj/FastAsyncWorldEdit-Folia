@@ -28,3 +28,20 @@ dependencies {
         }
     }
 }
+
+tasks.named("generateExternalPluginSpecBuilders") {
+    doLast {
+        val metaDir = layout.buildDirectory.dir("kotlin-dsl/precompiled-script-plugins-metadata/plugin-spec-builders").get().asFile
+        metaDir.mkdirs()
+        val importsFile = File(metaDir, "kotlinDslPluginSpecBuildersImplicitImports")
+        if (!importsFile.exists()) {
+            importsFile.createNewFile()
+        }
+        val genDir = layout.buildDirectory.dir("generated-sources/kotlin-dsl-external-plugin-spec-builders/kotlin/gradle/kotlin/dsl/plugins/_b63ff5cd45ef163ef5c5b6362a8c1562").get().asFile
+        genDir.mkdirs()
+        val specFile = File(genDir, "PluginSpecBuilders.kt")
+        if (!specFile.exists()) {
+            specFile.writeText("package gradle.kotlin.dsl.plugins._b63ff5cd45ef163ef5c5b6362a8c1562\n")
+        }
+    }
+}
