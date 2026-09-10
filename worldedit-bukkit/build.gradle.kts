@@ -253,8 +253,8 @@ publishMods {
     displayName.set("${project.version}")
     version.set("${project.version}")
     type.set(ReleaseType.STABLE)
-    changelog.set("The changelog is available on GitHub: https://github.com/IntellectualSites/" +
-            "FastAsyncWorldEdit/releases/tag/${project.version}")
+    changelog.set("The changelog is available on GitHub: https://github.com/realpeyaj/" +
+            "FAWE-lia/releases/tag/${project.version}")
 
     val common = modrinthOptions {
         accessToken = providers.environmentVariable("MODRINTH_TOKEN")

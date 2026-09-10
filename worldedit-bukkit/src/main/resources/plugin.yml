@@ -6,7 +6,7 @@ api-version: 1.21
 softdepend: [ Vault ]
 provides: [ WorldEdit ]
 folia-supported: true
-website: https://modrinth.com/plugin/fastasyncworldedit/
+website: https://github.com/realpeyaj/FAWE-lia
 description: Blazingly fast world manipulation for builders, large networks and developers.
 authors: [ Empire92, MattBDev, IronApollo, dordsor21, NotMyFault, SirYwell ]
 loadbefore: [ WorldGuard, PlotSquared ]
