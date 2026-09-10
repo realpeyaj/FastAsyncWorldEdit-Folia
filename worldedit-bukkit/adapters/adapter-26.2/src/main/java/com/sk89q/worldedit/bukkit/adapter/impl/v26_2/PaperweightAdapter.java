@@ -20,6 +20,9 @@
 package com.sk89q.worldedit.bukkit.adapter.impl.v26_2;
 
 import com.fastasyncworldedit.bukkit.util.PaperSupport;
+import com.fastasyncworldedit.core.util.FoliaUtil;
+import com.sk89q.worldedit.bukkit.WorldEditPlugin;
+import java.util.concurrent.TimeUnit;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -554,6 +557,33 @@ public final class PaperweightAdapter implements BukkitImplAdapter<Tag> {
         });
 
         if (createdEntity != null) {
+            if (FoliaUtil.isFoliaServer()) {
+                World world = craftWorld;
+                int chunkX = location.getBlockX() >> 4;
+                int chunkZ = location.getBlockZ() >> 4;
+                if (!Bukkit.isOwnedByCurrentRegion(world, chunkX, chunkZ)) {
+                    CompletableFuture<org.bukkit.entity.Entity> future = new CompletableFuture<>();
+                    Bukkit.getServer().getRegionScheduler().run(
+                            WorldEditPlugin.getInstance(),
+                            world,
+                            chunkX,
+                            chunkZ,
+                            task -> {
+                                try {
+                                    worldServer.addFreshEntityWithPassengers(createdEntity, SpawnReason.CUSTOM);
+                                    future.complete(createdEntity.getBukkitEntity());
+                                } catch (Throwable t) {
+                                    future.complete(null);
+                                }
+                            }
+                    );
+                    try {
+                        return future.get(5, TimeUnit.SECONDS);
+                    } catch (Throwable t) {
+                        return null;
+                    }
+                }
+            }
             worldServer.addFreshEntityWithPassengers(createdEntity, SpawnReason.CUSTOM);
             return createdEntity.getBukkitEntity();
         } else {
