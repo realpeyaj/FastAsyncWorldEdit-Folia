@@ -10,8 +10,8 @@ plugins {
     id("xyz.jpenilla.run-paper") version "3.1.0"
 }
 
-val rootVersion: String = (extra.properties["rootVersion"] as? String) ?: "2.15.5"
-val snapshot: String = (extra.properties["snapshot"] as? String) ?: "SNAPSHOT"
+val rootVersion: String = (extra.properties["rootVersion"] as? String) ?: "2.15.4"
+val snapshot: String = (extra.properties["snapshot"] as? String) ?: ""
 var revision: String = (extra.properties["revision"] as? String) ?: ""
 var buildNumber: String = (extra.properties["buildNumber"] as? String) ?: ""
 var date: String = (extra.properties["date"] as? String) ?: ""
@@ -28,11 +28,11 @@ fun gitOutput(vararg args: String): String =
 
 date = gitOutput("show", "-s", "--format=%cd", "--date=format:%y.%m.%d", "HEAD")
 revision = "-" + gitOutput("rev-parse", "--short=7", "HEAD")
-    buildNumber = if (project.hasProperty("buildnumber")) {
-        snapshot + "-" + (project.findProperty("buildnumber") as? String ?: "")
-    } else {
-        (project.findProperty("snapshot") as? String) ?: snapshot
-    }
+buildNumber = if (project.hasProperty("buildnumber")) {
+    (project.findProperty("buildnumber") as? String ?: "")
+} else {
+    (project.findProperty("snapshot") as? String) ?: snapshot
+}
 
 extra.set("rootVersion", rootVersion)
 extra.set("snapshot", snapshot)
@@ -40,7 +40,7 @@ extra.set("revision", revision)
 extra.set("buildNumber", buildNumber)
 extra.set("date", date)
 
-version = String.format("%s-%s", rootVersion, snapshot)
+version = if (snapshot.isNotEmpty()) String.format("%s-%s", rootVersion, snapshot) else rootVersion
 
 if (!project.hasProperty("gitCommitHash")) {
     ext["gitCommitHash"] = try {

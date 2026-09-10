@@ -3,7 +3,7 @@
 ![Java](https://img.shields.io/badge/Java-21%20%7C%2025-orange.svg)
 ![Platform](https://img.shields.io/badge/Platform-Folia-blue.svg)
 ![Minecraft](https://img.shields.io/badge/Minecraft-26.X-brightgreen.svg)
-![Version](https://img.shields.io/badge/Version-2.15.5--SNAPSHOT-green.svg)
+![Version](https://img.shields.io/badge/Version-2.15.4-green.svg)
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
 [![bStats](https://img.shields.io/bstats/servers/33922?color=blue)](https://bstats.org/plugin/bukkit/FAWElia/33922)
 
@@ -67,7 +67,7 @@ cd FAWE-lia
 
 The compiled JAR will be located at:
 ```
-worldedit-bukkit/build/libs/FAWElia-2.15.5-SNAPSHOT.jar
+worldedit-bukkit/build/libs/FAWElia-2.15.4.jar
 ```
 
 ---
