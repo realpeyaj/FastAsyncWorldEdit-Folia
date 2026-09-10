@@ -288,7 +288,13 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         int y = location.getBlockY();
         int z = location.getBlockZ();
         final ServerLevel handle = getServerLevel(location.getWorld());
-        LevelChunk chunk = handle.getChunk(x >> 4, z >> 4);
+        LevelChunk chunk = PaperweightPlatformAdapter.getChunkImmediatelyAsync(handle, x >> 4, z >> 4);
+        if (chunk == null && (FoliaUtil.isFoliaServer() ? Bukkit.isOwnedByCurrentRegion(location.getWorld(), x >> 4, z >> 4) : com.fastasyncworldedit.core.Fawe.isMainThread())) {
+            chunk = handle.getChunk(x >> 4, z >> 4);
+        }
+        if (chunk == null) {
+            return BlockTypesCache.states[BlockTypesCache.ReservedIDs.AIR];
+        }
         final BlockPos blockPos = new BlockPos(x, y, z);
         final net.minecraft.world.level.block.state.BlockState blockData = chunk.getBlockState(blockPos);
         BlockState state = adapt(blockData);
@@ -308,7 +314,13 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         int z = location.getBlockZ();
 
         final ServerLevel handle = getServerLevel(location.getWorld());
-        LevelChunk chunk = handle.getChunk(x >> 4, z >> 4);
+        LevelChunk chunk = PaperweightPlatformAdapter.getChunkImmediatelyAsync(handle, x >> 4, z >> 4);
+        if (chunk == null && (FoliaUtil.isFoliaServer() ? Bukkit.isOwnedByCurrentRegion(location.getWorld(), x >> 4, z >> 4) : com.fastasyncworldedit.core.Fawe.isMainThread())) {
+            chunk = handle.getChunk(x >> 4, z >> 4);
+        }
+        if (chunk == null) {
+            return BlockTypesCache.states[BlockTypesCache.ReservedIDs.AIR].toBaseBlock();
+        }
         final BlockPos blockPos = new BlockPos(x, y, z);
         final net.minecraft.world.level.block.state.BlockState blockData = chunk.getBlockState(blockPos);
         BlockState state = adapt(blockData);

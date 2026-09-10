@@ -322,6 +322,12 @@ public final class PaperweightPlatformAdapter extends NMSAdapter {
                 return nmsChunk;
             }
             // Avoid "async" methods from the main thread.
+            if (FoliaUtil.isFoliaServer()) {
+                if (Bukkit.isOwnedByCurrentRegion(serverLevel.getWorld(), chunkX, chunkZ)) {
+                    return serverLevel.getChunk(chunkX, chunkZ);
+                }
+                return null;
+            }
             if (Fawe.isMainThread()) {
                 return serverLevel.getChunk(chunkX, chunkZ);
             }

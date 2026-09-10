@@ -439,7 +439,7 @@ public class PlatformManager {
                         player.runAction(() -> reset(superPickaxe)
                                 .actPrimary(queryCapability(Capability.WORLD_EDITING),
                                         getConfiguration(), player, session, location, event.getFace()
-                                ), false, !FoliaUtil.isFoliaServer());
+                                ), false, true);
                         //FAWE end
                         event.setCancelled(true);
                         return;
@@ -452,7 +452,7 @@ public class PlatformManager {
                     player.runAction(() -> reset((DoubleActionBlockTool) tool)
                             .actSecondary(queryCapability(Capability.WORLD_EDITING),
                                     getConfiguration(), player, session, location, event.getFace()
-                            ), false, !FoliaUtil.isFoliaServer());
+                            ), false, true);
                     //FAWE end
                     event.setCancelled(true);
                 }
@@ -471,7 +471,7 @@ public class PlatformManager {
                             blockTool.actPrimary(queryCapability(Capability.WORLD_EDITING),
                                     getConfiguration(), player, session, location, event.getFace()
                             );
-                        }, false, !FoliaUtil.isFoliaServer());
+                        }, false, true);
                         //FAWE end
                         event.setCancelled(true);
                     }
@@ -510,17 +510,10 @@ public class PlatformManager {
                     Tool tool = session.getTool(player);
                     if (tool instanceof DoubleActionTraceTool && tool.canUse(player)) {
                         //FAWE start - run async
-                        if (FoliaUtil.isFoliaServer()) {
-                            player.runIfFree(() -> reset((DoubleActionTraceTool) tool)
-                                    .actSecondary(queryCapability(Capability.WORLD_EDITING),
-                                            getConfiguration(), player, session
-                                    ));
-                        } else {
-                            player.runAsyncIfFree(() -> reset((DoubleActionTraceTool) tool)
-                                    .actSecondary(queryCapability(Capability.WORLD_EDITING),
-                                            getConfiguration(), player, session
-                                    ));
-                        }
+                        player.runAsyncIfFree(() -> reset((DoubleActionTraceTool) tool)
+                                .actSecondary(queryCapability(Capability.WORLD_EDITING),
+                                        getConfiguration(), player, session
+                                ));
                         //FAWE end
                         event.setCancelled(true);
                         return;
@@ -536,7 +529,7 @@ public class PlatformManager {
                         //todo this needs to be fixed so the event is canceled after actPrimary is used and returns true
                         player.runAction(() -> reset((TraceTool) tool).actPrimary(queryCapability(Capability.WORLD_EDITING),
                                 getConfiguration(), player, session
-                        ), false, !FoliaUtil.isFoliaServer());
+                        ), false, true);
                         //FAWE end
                         event.setCancelled(true);
                         return;
