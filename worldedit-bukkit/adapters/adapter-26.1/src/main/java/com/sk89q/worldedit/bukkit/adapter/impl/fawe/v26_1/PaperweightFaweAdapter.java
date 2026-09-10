@@ -573,14 +573,31 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
     }
 
     private static final java.lang.invoke.MethodHandle CAPTURE_TREE_SETTER;
+    private static final java.lang.invoke.MethodHandle CAPTURE_BLOCK_STATES_SETTER;
+    private static final java.lang.invoke.MethodHandle CAPTURED_BLOCK_STATES_GETTER;
+
     static {
-        java.lang.invoke.MethodHandle setter = null;
+        java.lang.invoke.MethodHandle treeSetter = null;
+        java.lang.invoke.MethodHandle blockSetter = null;
+        java.lang.invoke.MethodHandle capturedGetter = null;
         try {
             var field = ServerLevel.class.getField("captureTreeGeneration");
-            setter = java.lang.invoke.MethodHandles.lookup().unreflectSetter(field);
+            treeSetter = java.lang.invoke.MethodHandles.lookup().unreflectSetter(field);
         } catch (Throwable ignored) {
         }
-        CAPTURE_TREE_SETTER = setter;
+        try {
+            var field = ServerLevel.class.getField("captureBlockStates");
+            blockSetter = java.lang.invoke.MethodHandles.lookup().unreflectSetter(field);
+        } catch (Throwable ignored) {
+        }
+        try {
+            var field = ServerLevel.class.getField("capturedBlockStates");
+            capturedGetter = java.lang.invoke.MethodHandles.lookup().unreflectGetter(field);
+        } catch (Throwable ignored) {
+        }
+        CAPTURE_TREE_SETTER = treeSetter;
+        CAPTURE_BLOCK_STATES_SETTER = blockSetter;
+        CAPTURED_BLOCK_STATES_GETTER = capturedGetter;
     }
 
     private static void setCaptureTreeGeneration(ServerLevel level, boolean value) {
@@ -592,22 +609,46 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         }
     }
 
+    private static void setCaptureBlockStates(ServerLevel level, boolean value) {
+        if (CAPTURE_BLOCK_STATES_SETTER != null) {
+            try {
+                CAPTURE_BLOCK_STATES_SETTER.invokeExact(level, value);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<BlockPos, org.bukkit.block.BlockState> getCapturedBlockStatesMap(ServerLevel level) {
+        if (CAPTURED_BLOCK_STATES_GETTER != null) {
+            try {
+                return (Map<BlockPos, org.bukkit.block.BlockState>) CAPTURED_BLOCK_STATES_GETTER.invokeExact(level);
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
+    }
+
     @Override
     protected void preCaptureStates(final ServerLevel serverLevel) {
         setCaptureTreeGeneration(serverLevel, true);
-        serverLevel.captureBlockStates = true;
+        setCaptureBlockStates(serverLevel, true);
     }
 
     @Override
     protected List<org.bukkit.block.BlockState> getCapturedBlockStatesCopy(final ServerLevel serverLevel) {
-        return new ArrayList<>(serverLevel.capturedBlockStates.values());
+        Map<BlockPos, org.bukkit.block.BlockState> map = getCapturedBlockStatesMap(serverLevel);
+        return map != null ? new ArrayList<>(map.values()) : Collections.emptyList();
     }
 
     @Override
     protected void postCaptureBlockStates(final ServerLevel serverLevel) {
-        serverLevel.captureBlockStates = false;
+        setCaptureBlockStates(serverLevel, false);
         setCaptureTreeGeneration(serverLevel, false);
-        serverLevel.capturedBlockStates.clear();
+        Map<BlockPos, org.bukkit.block.BlockState> map = getCapturedBlockStatesMap(serverLevel);
+        if (map != null) {
+            map.clear();
+        }
     }
 
     private <T> T syncRegion(World world, BlockVector3 pt, java.util.function.Supplier<T> supplier) {
@@ -617,9 +658,20 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
             Bukkit.getServer().getRegionScheduler().run(
                     WorldEditPlugin.getInstance(),
                     location,
-                    scheduledTask -> future.complete(supplier.get())
+                    scheduledTask -> {
+                        try {
+                            future.complete(supplier.get());
+                        } catch (Throwable t) {
+                            future.completeExceptionally(t);
+                        }
+                    }
             );
-            return future.join();
+            try {
+                return future.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (Throwable t) {
+                LOGGER.error("Failed to execute syncRegion task on Folia", t);
+                return null;
+            }
         }
         return TaskManager.taskManager().sync(supplier);
     }
@@ -647,7 +699,9 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                     return null;
                 }
                 List<CraftBlockState> placedBlocks = new ArrayList<>(populator.getSnapshotBlocks());
-                placedBlocks.addAll(serverLevel.capturedBlockStates.values());
+                for (org.bukkit.block.BlockState state : getCapturedBlockStatesCopy(serverLevel)) {
+                    placedBlocks.add((CraftBlockState) state);
+                }
                 return placedBlocks;
             } finally {
                 postCaptureBlockStates(serverLevel);
@@ -715,7 +769,9 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                             ), chunkPosx
                     ));
                     List<CraftBlockState> placedBlocks = new ArrayList<>(populator.getSnapshotBlocks());
-                    placedBlocks.addAll(serverLevel.capturedBlockStates.values());
+                    for (org.bukkit.block.BlockState state : getCapturedBlockStatesCopy(serverLevel)) {
+                        placedBlocks.add((CraftBlockState) state);
+                    }
                     return placedBlocks;
                 }
             } finally {
@@ -754,7 +810,9 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                     return null;
                 }
                 List<CraftBlockState> placedBlocks = new ArrayList<>(populator.getSnapshotBlocks());
-                placedBlocks.addAll(serverLevel.capturedBlockStates.values());
+                for (org.bukkit.block.BlockState state : getCapturedBlockStatesCopy(serverLevel)) {
+                    placedBlocks.add((CraftBlockState) state);
+                }
                 return placedBlocks;
             } finally {
                 postCaptureBlockStates(serverLevel);
