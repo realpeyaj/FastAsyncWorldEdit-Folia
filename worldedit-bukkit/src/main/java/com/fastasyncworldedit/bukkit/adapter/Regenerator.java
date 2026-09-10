@@ -43,7 +43,6 @@ public abstract class Regenerator {
 
     //runtime
     protected long seed;
-    private io.papermc.paper.threadedregions.scheduler.ScheduledTask foliaRegenTask;
     protected SingleThreadQueueExtent source;
 
     /**
@@ -111,20 +110,7 @@ public abstract class Regenerator {
         createSource();
         final long timeoutPerTick = TimeUnit.MILLISECONDS.toNanos(10);
         int taskId = -1;
-        if (FoliaUtil.isFoliaServer()) {
-            BlockVector3 min = region.getMinimumPoint();
-            Location location = new Location(originalBukkitWorld, min.x(), min.y(), min.z());
-            foliaRegenTask = Bukkit.getServer().getRegionScheduler().runAtFixedRate(
-                    WorldEditPlugin.getInstance(),
-                    location,
-                    scheduledTask -> {
-                        final long startTime = System.nanoTime();
-                        runTasks(() -> System.nanoTime() - startTime < timeoutPerTick);
-                    },
-                    1,
-                    1
-            );
-        } else {
+        if (!FoliaUtil.isFoliaServer()) {
             taskId = TaskManager.taskManager().repeat(() -> {
                 final long startTime = System.nanoTime();
                 runTasks(() -> System.nanoTime() - startTime < timeoutPerTick);
@@ -150,10 +136,7 @@ public abstract class Regenerator {
         try {
             target.setBlocks(region, pattern);
         } finally {
-            if (foliaRegenTask != null) {
-                foliaRegenTask.cancel();
-                foliaRegenTask = null;
-            } else if (taskId != -1) {
+            if (taskId != -1) {
                 TaskManager.taskManager().cancel(taskId);
             }
         }
@@ -247,10 +230,6 @@ public abstract class Regenerator {
 
     //functions to be implemented by sub class
     private void cleanup0() {
-        if (foliaRegenTask != null) {
-            foliaRegenTask.cancel();
-            foliaRegenTask = null;
-        }
         cleanup();
     }
 

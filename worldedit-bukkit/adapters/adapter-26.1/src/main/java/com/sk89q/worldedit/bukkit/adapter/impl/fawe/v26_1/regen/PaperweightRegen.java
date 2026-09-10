@@ -101,6 +101,9 @@ public class PaperweightRegen extends Regenerator {
 
     @Override
     protected void runTasks(final BooleanSupplier shouldKeepTicking) {
+        if (FoliaUtil.isFoliaServer()) {
+            return;
+        }
         while (shouldKeepTicking.getAsBoolean()) {
             if (!this.freshWorld.getChunkSource().pollTask()) {
                 return;
