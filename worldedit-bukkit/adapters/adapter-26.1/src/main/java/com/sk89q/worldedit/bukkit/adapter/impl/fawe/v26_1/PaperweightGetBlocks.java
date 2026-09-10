@@ -369,11 +369,12 @@ public class PaperweightGetBlocks extends AbstractBukkitGetBlocks<ServerLevel, L
                     if (createCopy) {
                         copy.storeTile(tile);
                     }
-                    if (PaperSupport.isPaper() && tile instanceof BeaconBlockEntity) {
+                    if (tile instanceof BeaconBlockEntity) {
                         if (beaconPositions == null) {
                             beaconPositions = new ArrayList<>();
                         }
                         beaconPositions.add(pos.immutable());
+                        continue;
                     }
                     nmsChunk.removeBlockEntity(pos);
                 }
@@ -597,8 +598,7 @@ public class PaperweightGetBlocks extends AbstractBukkitGetBlocks<ServerLevel, L
             int bx = chunkX << 4;
             int bz = chunkZ << 4;
 
-            // Call beacon deactivate events here synchronously
-            // list will be null on spigot, so this is an implicit isPaper check
+            // Remove beacon block entities synchronously so BeaconDeactivatedEvent fires on the region/main thread
             if (beaconPositions != null && !beaconPositions.isEmpty()) {
                 final List<BlockPos> finalBeaconPositions = beaconPositions;
 
@@ -609,16 +609,14 @@ public class PaperweightGetBlocks extends AbstractBukkitGetBlocks<ServerLevel, L
                             location,
                             () -> {
                                 for (BlockPos beaconPos : finalBeaconPositions) {
-                                    BeaconBlockEntity.playSound(nmsWorld, beaconPos, SoundEvents.BEACON_DEACTIVATE);
-                                    new BeaconDeactivatedEvent(CraftBlock.at(nmsWorld, beaconPos)).callEvent();
+                                    nmsChunk.removeBlockEntity(beaconPos);
                                 }
                             }
                     );
                 } else {
                     syncTasks.add(() -> {
                         for (BlockPos beaconPos : finalBeaconPositions) {
-                            BeaconBlockEntity.playSound(nmsWorld, beaconPos, SoundEvents.BEACON_DEACTIVATE);
-                            new BeaconDeactivatedEvent(CraftBlock.at(nmsWorld, beaconPos)).callEvent();
+                            nmsChunk.removeBlockEntity(beaconPos);
                         }
                     });
                 }
