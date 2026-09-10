@@ -678,6 +678,11 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
 
     @Override
     public boolean generateFeature(ConfiguredFeatureType feature, World world, EditSession editSession, BlockVector3 pt) {
+        if (FoliaUtil.isFoliaServer()) {
+            Boolean res = syncRegion(world, pt, () -> parent.generateFeature(feature, world, editSession, pt));
+            return res != null && res;
+        }
+
         ServerLevel serverLevel = getServerLevel(world);
         ChunkGenerator generator = serverLevel.getMinecraftWorld().getChunkSource().getGenerator();
 
@@ -713,6 +718,11 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
 
     @Override
     public boolean generateStructure(StructureType type, World world, EditSession editSession, BlockVector3 pt) {
+        if (FoliaUtil.isFoliaServer()) {
+            Boolean res = syncRegion(world, pt, () -> parent.generateStructure(type, world, editSession, pt));
+            return res != null && res;
+        }
+
         ServerLevel serverLevel = getServerLevel(world);
         Registry<Structure> structureRegistry = serverLevel.registryAccess().lookupOrThrow(Registries.STRUCTURE);
         Structure structure = structureRegistry.getValue(Identifier.tryParse(type.id()));
@@ -761,7 +771,7 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                             chunkManager.getGenerator(),
                             serverLevel.getRandom(),
                             new BoundingBox(
-                                    chunkPosx.getMinBlockX(),
+                                     chunkPosx.getMinBlockX(),
                                     serverLevel.getMinY(),
                                     chunkPosx.getMinBlockZ(),
                                     chunkPosx.getMaxBlockX(),
@@ -789,6 +799,24 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
             final EditSession session,
             final BlockVector3 pt
     ) throws MaxChangedBlocksException {
+        if (FoliaUtil.isFoliaServer()) {
+            try {
+                Boolean res = syncRegion(world, pt, () -> {
+                    try {
+                        return parent.generateTree(treeType, world, session, pt);
+                    } catch (MaxChangedBlocksException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+                return res != null && res;
+            } catch (RuntimeException e) {
+                if (e.getCause() instanceof MaxChangedBlocksException maxChangedBlocksException) {
+                    throw maxChangedBlocksException;
+                }
+                throw e;
+            }
+        }
+
         ServerLevel serverLevel = getServerLevel(world);
         ChunkGenerator generator = serverLevel.getMinecraftWorld().getChunkSource().getGenerator();
 
