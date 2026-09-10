@@ -17,15 +17,40 @@ Upstream FAWE is optimized for single-threaded main-loop servers (Paper/Spigot) 
 
 FAWElia re-architects FAWE's scheduling and NMS adapters to comply fully with Folia region boundaries, allowing you to manipulate millions of blocks, paste massive schematics, and run complex brushes across multi-region servers at peak TPS.
 
-### Folia Innovations and Architecture
+### Folia Feature Test Status
 
-- **Region-Aware Scheduling**: All tile entity updates, block mutations, and beacon events dispatch to `Bukkit.getRegionScheduler()` anchored to exact world coordinates.
-- **Thread-Safe Entity Handling**: Entity spawning and removals run via `entity.getScheduler()`, completely avoiding main-thread lockups.
-- **Asynchronous Teleportation**: Player movements and unstuck operations leverage non-blocking `teleportAsync` without dangerous `.join()` stalls.
-- **Direct Packet Dispatching**: Chunk visual refresh packets are sent concurrently to nearby players without depending on the single-threaded server tick executor.
-- **Folia-Ready `//regen`**: World regeneration coordinates with Folia's regionized world initialization on the spawn chunk.
-- **Zero External Dependencies**: Implemented using internal `FoliaUtil` and `PaperSupport` without third-party shims.
-- **Streamlined 26.X Focus**: Legacy 1.21 modules and older Paperweight overhead are removed, drastically reducing compile times and allowing native builds with Java 25.
+| Category | Feature / Command | Status | Example Command | Notes |
+| :--- | :--- | :---: | :--- | :--- |
+| **Basic Edits** | `//set <pattern>` | ✓ | `//set stone` | RegionScheduler flush working |
+| **Basic Edits** | `//undo` & `//redo` | ✓ | `//undo` then `//redo` | Restores blocks and chunk packets cleanly |
+| **Geometry** | `//sphere`, `//cyl`, `//pyramid` | ✓ | `//sphere stone 5` | Cross-chunk block placement verified |
+| **Geometry** | `//walls`, `//faces` | ✓ | `//walls glass` | Boundary placement operational |
+| **Selection** | `//pos1`, `//pos2`, `//wand` | ✓ | `//pos1` and `//pos2` | Coordinates and bounds set accurately |
+| **Tools** | `//tree <type>` | ✓ | `//tree birch` | Snapshot buffer fixed, fully undoable |
+| **Tools** | `/brush sphere`, `cyl` | ✓ | `/brush sphere stone 5` | Fixed async dispatch via AsyncNotifyKeyedQueue |
+| **Tools** | `//sp single` | ✓ | `//sp single` | Drops scheduled on region thread |
+| **Clipboard** | `//copy` & `//paste` (blocks) | ✓ | `//copy` then `//paste` | Static blocks copy and paste cleanly |
+| **Clipboard** | `//copy` (with mobs nearby) | ✓ | `//copy` | Safe handling when mobs are unowned |
+| **Clipboard** | `//copy -e` & `//paste -e` | ✓ | `//copy -e` then `//paste -e` | Direct handle reflection + region-safe spawn |
+| **Clipboard** | `//rotate` & `//flip` | ✓ | `//rotate 90` then `//paste` | Geometric transformation on clipboard |
+| **Clipboard** | `//stack` & `//move` | ✓ | `//stack 3 up` | Multi-chunk directional block shifting |
+| **Regeneration** | `//regen` | ✓ | `//regen` | Folia world generation populator (`initWorldForFolia`) |
+| **Schematics** | `//schem save` & `load` | ✓ | `//schem save test1` | Disk I/O, format parsing, and paste |
+| **Biomes** | `//setbiome <biome>` | ✓ | `//setbiome desert` | Biome palette change across chunk borders |
+| **Biomes** | `//biomeinfo` | ✓ | `//biomeinfo` | Coordinate-based biome inspection |
+| **Navigation** | `//thru`, `//jumpto`, `//unstuck` | ✓ | `//thru` | Non-blocking player teleportation on Folia |
+| **Navigation** | `//ascend`, `//descend` | ✓ | `//ascend` | Vertical safe location searching and teleport |
+| **Masks & Filter** | `//replace <from> <to>` | ✓ | `//replace dirt stone` | Targeted block replacement |
+| **Masks & Filter** | Masked brush | ✓ | `/brush sphere stone 5 -m grass_block` | Block filtering under brush placement |
+| **Utilities** | `//drain`, `//fixwater` | ✓ | `//drain 15` | Fluid block search and region-safe clearing |
+| **Utilities** | `//fixlava` | ✓ | `//fixlava 15` | Lava source generation and flow leveling |
+| **Utilities** | `//snow` & `//thaw` | ✓ | `//snow 20` | Surface snow placement and melting |
+| **Physics** | `//set sand` (falling blocks) | ✓ | `//set sand` | Gravity update checks across region borders |
+| **Inspection** | `//distr`, `//count` | ✓ | `//distr` | Fast parallel block counting across chunks |
+| **Brushes** | `/brush smooth` | ✓ | `/brush smooth 5 3` | Iterative terrain height smoothing |
+| **Brushes** | `/brush gravity` | ✓ | `/brush gravity 5` | Gravity simulation brush |
+| **Stress Test** | Large area edits (100k+ blocks) | ? | `//sphere stone 30` | Massive multi-region chunk queue flush |
+| **Performance** | Concurrent multi-region edits | ? | 2 players running `//set` in different chunks | Thread isolation across independent Folia regions |
 
 ---
 
