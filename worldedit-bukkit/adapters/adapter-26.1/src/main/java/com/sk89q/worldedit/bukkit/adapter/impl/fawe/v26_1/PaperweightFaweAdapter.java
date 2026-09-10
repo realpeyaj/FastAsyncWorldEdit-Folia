@@ -359,27 +359,65 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         return new PaperweightFaweWorldNativeAccess(this, new WeakReference<>(getServerLevel(world)));
     }
 
+    private static final Field CRAFT_ENTITY_HANDLE;
+
+    static {
+        Field field = null;
+        Class<?> clazz = CraftEntity.class;
+        while (clazz != null && clazz != Object.class) {
+            try {
+                field = clazz.getDeclaredField("entity");
+                field.setAccessible(true);
+                break;
+            } catch (NoSuchFieldException ignored) {
+                clazz = clazz.getSuperclass();
+            }
+        }
+        CRAFT_ENTITY_HANDLE = field;
+    }
+
+    private static Entity getHandleDirect(CraftEntity craftEntity) {
+        if (craftEntity == null) {
+            return null;
+        }
+        if (CRAFT_ENTITY_HANDLE != null) {
+            try {
+                return (Entity) CRAFT_ENTITY_HANDLE.get(craftEntity);
+            } catch (Throwable ignored) {
+            }
+        }
+        try {
+            return craftEntity.getHandle();
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     @Override
     public BaseEntity getEntity(org.bukkit.entity.Entity entity) {
         Preconditions.checkNotNull(entity);
 
-        CraftEntity craftEntity = ((CraftEntity) entity);
-        Entity mcEntity;
-        try {
-            mcEntity = craftEntity.getHandle();
-        } catch (Throwable t) {
-            return null;
-        }
+        CraftEntity craftEntity = entity instanceof CraftEntity ce ? ce : null;
+        Entity mcEntity = craftEntity != null ? getHandleDirect(craftEntity) : null;
 
-        String id = getEntityId(mcEntity);
+        String id;
+        if (mcEntity != null) {
+            id = getEntityId(mcEntity);
+        } else {
+            id = entity.getType().getKey().toString();
+        }
         EntityType type = com.sk89q.worldedit.world.entity.EntityTypes.get(id);
         Supplier<LinCompoundTag> saveTag = () -> {
             Supplier<LinCompoundTag> internalSave = () -> {
                 final LinValueOutput output = createOutput();
-                if (!mcEntity.save(output)) {
-                    return null;
+                if (mcEntity != null) {
+                    try {
+                        mcEntity.save(output);
+                    } catch (Throwable t) {
+                        LOGGER.warn("Failed to serialize entity NBT for {}: {}", id, t.getMessage());
+                    }
                 }
-                //add Id for AbstractChangeSet to work
+                // add Id for AbstractChangeSet to work
                 return output.toBuilder().putString("Id", id).build();
             };
 
@@ -388,7 +426,7 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                     return internalSave.get();
                 }
                 java.util.concurrent.CompletableFuture<LinCompoundTag> future = new java.util.concurrent.CompletableFuture<>();
-                entity.getScheduler().run(
+                Object scheduled = entity.getScheduler().run(
                         WorldEditPlugin.getInstance(),
                         task -> {
                             try {
@@ -399,12 +437,31 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                         },
                         () -> future.complete(null)
                 );
+                if (scheduled == null) {
+                    com.sk89q.worldedit.util.Location weLoc = getEntityLocation(entity);
+                    Bukkit.getServer().getRegionScheduler().run(
+                            WorldEditPlugin.getInstance(),
+                            entity.getWorld(),
+                            weLoc.getBlockX() >> 4,
+                            weLoc.getBlockZ() >> 4,
+                            task -> {
+                                try {
+                                    future.complete(internalSave.get());
+                                } catch (Throwable t) {
+                                    future.completeExceptionally(t);
+                                }
+                            }
+                    );
+                }
                 try {
-                    return future.get(5, java.util.concurrent.TimeUnit.SECONDS);
+                    LinCompoundTag res = future.get(5, java.util.concurrent.TimeUnit.SECONDS);
+                    if (res != null) {
+                        return res;
+                    }
                 } catch (Throwable t) {
                     LOGGER.error("Failed to serialize entity on Folia region thread", t);
-                    return null;
                 }
+                return LinCompoundTag.builder().putString("Id", id).build();
             }
 
             return internalSave.get();
@@ -415,19 +472,16 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
     @Override
     public com.sk89q.worldedit.util.Location getEntityLocation(org.bukkit.entity.Entity entity) {
         if (FoliaUtil.isFoliaServer() && entity instanceof CraftEntity craftEntity) {
-            try {
-                Entity handle = craftEntity.getHandle();
-                if (handle != null) {
-                    return new com.sk89q.worldedit.util.Location(
-                            BukkitAdapter.adapt(entity.getWorld()),
-                            handle.getX(),
-                            handle.getY(),
-                            handle.getZ(),
-                            handle.getYRot(),
-                            handle.getXRot()
-                    );
-                }
-            } catch (Throwable ignored) {
+            Entity handle = getHandleDirect(craftEntity);
+            if (handle != null) {
+                return new com.sk89q.worldedit.util.Location(
+                        BukkitAdapter.adapt(entity.getWorld()),
+                        handle.getX(),
+                        handle.getY(),
+                        handle.getZ(),
+                        handle.getYRot(),
+                        handle.getXRot()
+                );
             }
         }
         return BukkitAdapter.adapt(entity.getLocation());

@@ -674,15 +674,15 @@ public class PaperweightGetBlocks extends AbstractBukkitGetBlocks<ServerLevel, L
                         final LinStringTag idTag = linTag.findTag("Id", LinTagType.stringTag());
                         final LinListTag<LinDoubleTag> posTag = linTag.findListTag("Pos", LinTagType.doubleTag());
                         final LinListTag<LinFloatTag> rotTag = linTag.findListTag("Rotation", LinTagType.floatTag());
-                        if (idTag == null || posTag == null || rotTag == null) {
+                        if (idTag == null || posTag == null || posTag.value().size() < 3) {
                             LOGGER.error("Unknown entity tag: {}", nativeTag);
                             continue;
                         }
                         final double x = posTag.get(0).valueAsDouble();
                         final double y = posTag.get(1).valueAsDouble();
                         final double z = posTag.get(2).valueAsDouble();
-                        final float yaw = rotTag.get(0).valueAsFloat();
-                        final float pitch = rotTag.get(1).valueAsFloat();
+                        final float yaw = (rotTag != null && rotTag.value().size() > 0) ? rotTag.get(0).valueAsFloat() : 0.0f;
+                        final float pitch = (rotTag != null && rotTag.value().size() > 1) ? rotTag.get(1).valueAsFloat() : 0.0f;
                         final String id = idTag.value();
 
                         EntityType<?> type = serverLevel.registryAccess()
