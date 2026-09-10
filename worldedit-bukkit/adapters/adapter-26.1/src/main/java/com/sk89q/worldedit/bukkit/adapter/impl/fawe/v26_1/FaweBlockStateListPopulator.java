@@ -204,17 +204,17 @@ public class FaweBlockStateListPopulator extends BlockStateListPopulator {
 
     @Override
     public boolean setBlock(final BlockPos pos, final BlockState state, final int flags, final int maxUpdateDepth) {
-        return world.setBlock(pos, state, flags, maxUpdateDepth);
+        return super.setBlock(pos, state, flags, maxUpdateDepth);
     }
 
     @Override
     public boolean removeBlock(final BlockPos pos, final boolean move) {
-        return world.removeBlock(pos, move);
+        return super.removeBlock(pos, move);
     }
 
     @Override
     public boolean destroyBlock(final BlockPos pos, final boolean drop, final Entity breakingEntity, final int maxUpdateDepth) {
-        return world.destroyBlock(pos, drop, breakingEntity, maxUpdateDepth);
+        return super.destroyBlock(pos, drop, breakingEntity, maxUpdateDepth);
     }
 
     @Override
@@ -225,7 +225,7 @@ public class FaweBlockStateListPopulator extends BlockStateListPopulator {
 
     @Override
     public boolean setBlock(final BlockPos pos, final BlockState state, final int flags) {
-        return world.setBlock(pos, state, flags);
+        return super.setBlock(pos, state, flags);
     }
 
 }
