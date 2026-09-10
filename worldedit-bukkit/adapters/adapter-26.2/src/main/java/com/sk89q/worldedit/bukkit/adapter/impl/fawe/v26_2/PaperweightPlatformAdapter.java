@@ -668,6 +668,33 @@ public final class PaperweightPlatformAdapter extends NMSAdapter {
     }
 
     static List<Entity> getEntities(LevelChunk chunk) {
+        if (FoliaUtil.isFoliaServer()) {
+            org.bukkit.World world = chunk.getLevel().getWorld();
+            if (!Bukkit.isOwnedByCurrentRegion(world, chunk.locX, chunk.locZ)) {
+                CompletableFuture<List<Entity>> future = new CompletableFuture<>();
+                Bukkit.getServer().getRegionScheduler().run(
+                        WorldEditPlugin.getInstance(),
+                        world,
+                        chunk.locX,
+                        chunk.locZ,
+                        task -> {
+                            try {
+                                future.complete(Optional.ofNullable(chunk.getLevel()
+                                        .moonrise$getEntityLookup()
+                                        .getChunk(chunk.locX, chunk.locZ)).map(ChunkEntitySlices::getAllEntities).orElse(Collections.emptyList()));
+                            } catch (Throwable t) {
+                                future.complete(Collections.emptyList());
+                            }
+                        }
+                );
+                try {
+                    return future.get(5, java.util.concurrent.TimeUnit.SECONDS);
+                } catch (Throwable t) {
+                    LOGGER.warn("Failed to get entities for chunk {},{} on Folia: {}", chunk.locX, chunk.locZ, t.getMessage());
+                    return Collections.emptyList();
+                }
+            }
+        }
         if (PaperSupport.isPaper()) {
             return Optional.ofNullable(chunk.getLevel()
                 .moonrise$getEntityLookup()

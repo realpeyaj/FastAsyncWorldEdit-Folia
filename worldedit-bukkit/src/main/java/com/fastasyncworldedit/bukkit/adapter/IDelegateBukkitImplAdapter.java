@@ -78,6 +78,11 @@ public interface IDelegateBukkitImplAdapter<T> extends BukkitImplAdapter<T> {
     }
 
     @Override
+    default com.sk89q.worldedit.util.Location getEntityLocation(Entity entity) {
+        return getParent().getEntityLocation(entity);
+    }
+
+    @Override
     default Map<String, ? extends Property<?>> getProperties(BlockType blockType) {
         return getParent().getProperties(blockType);
     }

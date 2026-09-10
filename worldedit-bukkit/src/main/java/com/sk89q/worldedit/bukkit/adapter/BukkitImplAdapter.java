@@ -157,6 +157,16 @@ public interface BukkitImplAdapter<T> extends IBukkitAdapter {
     Entity createEntity(Location location, BaseEntity state);
 
     /**
+     * Get the location for the given entity in a thread-safe manner.
+     *
+     * @param entity the entity
+     * @return the location
+     */
+    default com.sk89q.worldedit.util.Location getEntityLocation(Entity entity) {
+        return BukkitAdapter.adapt(entity.getLocation());
+    }
+
+    /**
      * Gets the name for the given block.
      *
      * @param blockType the block

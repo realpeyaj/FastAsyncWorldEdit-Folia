@@ -362,12 +362,6 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
     @Override
     public BaseEntity getEntity(org.bukkit.entity.Entity entity) {
         Preconditions.checkNotNull(entity);
-        if (FoliaUtil.isFoliaServer()) {
-            org.bukkit.Location loc = entity.getLocation();
-            if (!Bukkit.isOwnedByCurrentRegion(loc)) {
-                return null;
-            }
-        }
 
         CraftEntity craftEntity = ((CraftEntity) entity);
         Entity mcEntity;
@@ -380,14 +374,63 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         String id = getEntityId(mcEntity);
         EntityType type = com.sk89q.worldedit.world.entity.EntityTypes.get(id);
         Supplier<LinCompoundTag> saveTag = () -> {
-            final LinValueOutput output = createOutput();
-            if (!mcEntity.save(output)) {
-                return null;
+            Supplier<LinCompoundTag> internalSave = () -> {
+                final LinValueOutput output = createOutput();
+                if (!mcEntity.save(output)) {
+                    return null;
+                }
+                //add Id for AbstractChangeSet to work
+                return output.toBuilder().putString("Id", id).build();
+            };
+
+            if (FoliaUtil.isFoliaServer()) {
+                if (Bukkit.isOwnedByCurrentRegion(entity)) {
+                    return internalSave.get();
+                }
+                java.util.concurrent.CompletableFuture<LinCompoundTag> future = new java.util.concurrent.CompletableFuture<>();
+                entity.getScheduler().run(
+                        WorldEditPlugin.getInstance(),
+                        task -> {
+                            try {
+                                future.complete(internalSave.get());
+                            } catch (Throwable t) {
+                                future.completeExceptionally(t);
+                            }
+                        },
+                        () -> future.complete(null)
+                );
+                try {
+                    return future.get(5, java.util.concurrent.TimeUnit.SECONDS);
+                } catch (Throwable t) {
+                    LOGGER.error("Failed to serialize entity on Folia region thread", t);
+                    return null;
+                }
             }
-            //add Id for AbstractChangeSet to work
-            return output.toBuilder().putString("Id", id).build();
+
+            return internalSave.get();
         };
         return new LazyBaseEntity(type, saveTag);
+    }
+
+    @Override
+    public com.sk89q.worldedit.util.Location getEntityLocation(org.bukkit.entity.Entity entity) {
+        if (FoliaUtil.isFoliaServer() && entity instanceof CraftEntity craftEntity) {
+            try {
+                Entity handle = craftEntity.getHandle();
+                if (handle != null) {
+                    return new com.sk89q.worldedit.util.Location(
+                            BukkitAdapter.adapt(entity.getWorld()),
+                            handle.getX(),
+                            handle.getY(),
+                            handle.getZ(),
+                            handle.getYRot(),
+                            handle.getXRot()
+                    );
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        return BukkitAdapter.adapt(entity.getLocation());
     }
 
     @Override

@@ -167,6 +167,57 @@ public class BukkitWorld extends AbstractWorld {
     @Override
     public List<com.sk89q.worldedit.entity.Entity> getEntities(Region region) {
         World world = getWorld();
+        if (world == null) {
+            return Collections.emptyList();
+        }
+
+        if (FoliaUtil.isFoliaServer()) {
+            int minChunkX = region.getMinimumPoint().x() >> 4;
+            int maxChunkX = region.getMaximumPoint().x() >> 4;
+            int minChunkZ = region.getMinimumPoint().z() >> 4;
+            int maxChunkZ = region.getMaximumPoint().z() >> 4;
+
+            List<CompletableFuture<List<com.sk89q.worldedit.entity.Entity>>> futures = new ArrayList<>();
+            for (int cx = minChunkX; cx <= maxChunkX; cx++) {
+                for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
+                    final int chunkX = cx;
+                    final int chunkZ = cz;
+                    CompletableFuture<List<com.sk89q.worldedit.entity.Entity>> chunkFuture = new CompletableFuture<>();
+                    Bukkit.getServer().getRegionScheduler().run(
+                            WorldEditPlugin.getInstance(),
+                            world,
+                            chunkX,
+                            chunkZ,
+                            task -> {
+                                try {
+                                    if (world.isChunkLoaded(chunkX, chunkZ)) {
+                                        List<com.sk89q.worldedit.entity.Entity> filtered = new ArrayList<>();
+                                        for (Entity ent : world.getChunkAt(chunkX, chunkZ).getEntities()) {
+                                            if (region.contains(BukkitAdapter.asBlockVector(ent.getLocation()))) {
+                                                filtered.add(BukkitAdapter.adapt(ent));
+                                            }
+                                        }
+                                        chunkFuture.complete(filtered);
+                                    } else {
+                                        chunkFuture.complete(Collections.emptyList());
+                                    }
+                                } catch (Throwable t) {
+                                    chunkFuture.complete(Collections.emptyList());
+                                }
+                            }
+                    );
+                    futures.add(chunkFuture);
+                }
+            }
+            List<com.sk89q.worldedit.entity.Entity> result = new ArrayList<>();
+            for (CompletableFuture<List<com.sk89q.worldedit.entity.Entity>> future : futures) {
+                try {
+                    result.addAll(future.get(5, java.util.concurrent.TimeUnit.SECONDS));
+                } catch (Throwable ignored) {
+                }
+            }
+            return result;
+        }
 
         List<Entity> ents = syncRegion(region.getMinimumPoint(), world::getEntities);
         List<com.sk89q.worldedit.entity.Entity> entities = new ArrayList<>();

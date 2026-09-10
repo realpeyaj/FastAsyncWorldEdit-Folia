@@ -76,6 +76,10 @@ public class BukkitEntity implements Entity {
     public Location getLocation() {
         org.bukkit.entity.Entity entity = entityRef.get();
         if (entity != null) {
+            BukkitImplAdapter adapter = WorldEditPlugin.getInstance().getBukkitImplAdapter();
+            if (adapter != null) {
+                return adapter.getEntityLocation(entity);
+            }
             return BukkitAdapter.adapt(entity.getLocation());
         } else {
             return new Location(NullWorld.getInstance());
@@ -102,12 +106,6 @@ public class BukkitEntity implements Entity {
         if (entity != null) {
             if (entity instanceof Player) {
                 return null;
-            }
-            if (FoliaUtil.isFoliaServer()) {
-                org.bukkit.Location loc = entity.getLocation();
-                if (!Bukkit.isOwnedByCurrentRegion(loc)) {
-                    return null;
-                }
             }
 
             BukkitImplAdapter adapter = WorldEditPlugin.getInstance().getBukkitImplAdapter();
