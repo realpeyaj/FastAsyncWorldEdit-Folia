@@ -39,7 +39,7 @@ FAWElia re-architects FAWE's scheduling and NMS adapters to comply fully with Fo
 
 ## Installation
 
-1. Download the latest `FAWElia-*.jar` from [Releases](https://github.com/realpeyaj/FAWElia/releases) or Modrinth.
+1. Download the latest `FAWElia-*.jar` from [Releases](https://github.com/realpeyaj/FAWE-lia/releases) or Modrinth.
 2. Place the `.jar` into your server's `plugins/` folder.
 3. Start or restart your server.
 4. Look for the startup confirmation in your console:
@@ -56,8 +56,8 @@ Ensure you have Java 21 or Java 25 installed.
 
 ```bash
 # Clone the repository
-git clone https://github.com/realpeyaj/FAWElia.git
-cd FAWElia
+git clone https://github.com/realpeyaj/FAWE-lia.git
+cd FAWE-lia
 
 # Build the shaded Folia plugin JAR
 ./gradlew :worldedit-bukkit:shadowJar
