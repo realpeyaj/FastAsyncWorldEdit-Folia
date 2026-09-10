@@ -79,6 +79,7 @@ import java.util.concurrent.CompletableFuture;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -407,7 +408,20 @@ public class BukkitWorld extends AbstractWorld {
     @Override
     public void dropItem(Vector3 pt, BaseItemStack item) {
         World world = getWorld();
-        world.dropItemNaturally(BukkitAdapter.adapt(world, pt), BukkitAdapter.adapt(item));
+        if (world == null) {
+            return;
+        }
+        org.bukkit.Location loc = BukkitAdapter.adapt(world, pt);
+        org.bukkit.inventory.ItemStack is = BukkitAdapter.adapt(item);
+        if (FoliaUtil.isFoliaServer()) {
+            Bukkit.getServer().getRegionScheduler().run(
+                    WorldEditPlugin.getInstance(),
+                    loc,
+                    task -> world.dropItemNaturally(loc, is)
+            );
+            return;
+        }
+        world.dropItemNaturally(loc, is);
     }
 
     @Override
@@ -555,7 +569,18 @@ public class BukkitWorld extends AbstractWorld {
     //FAWE start
     @Override
     public Collection<BaseItemStack> getBlockDrops(BlockVector3 position) {
-        return getWorld().getBlockAt(position.x(), position.y(), position.z()).getDrops().stream()
+        World world = getWorld();
+        if (world == null) {
+            return Collections.emptyList();
+        }
+        if (FoliaUtil.isFoliaServer()) {
+            if (Bukkit.isOwnedByCurrentRegion(world, position.x() >> 4, position.z() >> 4)) {
+                return world.getBlockAt(position.x(), position.y(), position.z()).getDrops().stream()
+                        .map(BukkitAdapter::adapt).collect(Collectors.toList());
+            }
+            return Collections.emptyList();
+        }
+        return world.getBlockAt(position.x(), position.y(), position.z()).getDrops().stream()
                 .map(BukkitAdapter::adapt).collect(Collectors.toList());
     }
     //FAWE end
