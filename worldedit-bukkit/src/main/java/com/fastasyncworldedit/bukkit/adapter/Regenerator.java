@@ -104,10 +104,10 @@ public abstract class Regenerator {
 
     private void copyToWorld() {
         createSource();
-        int taskId = -1;
+        TaskManager.Task task = null;
         if (!FoliaSupport.isFolia()) {
             final long timeoutPerTick = TimeUnit.MILLISECONDS.toNanos(10);
-            taskId = TaskManager.taskManager().repeat(() -> {
+            task = TaskManager.taskManager().repeat(() -> {
                 final long startTime = System.nanoTime();
                 runTasks(() -> System.nanoTime() - startTime < timeoutPerTick);
             }, 1);
@@ -130,8 +130,8 @@ public abstract class Regenerator {
             });
         }
         target.setBlocks(region, pattern);
-        if (taskId != -1) {
-            TaskManager.taskManager().cancel(taskId);
+        if (task != null) {
+            task.cancel();
         }
     }
 
