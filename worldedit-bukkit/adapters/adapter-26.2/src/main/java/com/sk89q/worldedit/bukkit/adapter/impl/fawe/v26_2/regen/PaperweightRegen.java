@@ -3,6 +3,7 @@ package com.sk89q.worldedit.bukkit.adapter.impl.fawe.v26_2.regen;
 import com.fastasyncworldedit.bukkit.adapter.Regenerator;
 import com.fastasyncworldedit.bukkit.util.PaperSupport;
 import com.fastasyncworldedit.core.util.FoliaSupport;
+import com.fastasyncworldedit.core.util.TaskManager;
 import com.fastasyncworldedit.core.Fawe;
 import com.fastasyncworldedit.core.queue.IChunkCache;
 import com.fastasyncworldedit.core.queue.IChunkGet;
@@ -159,7 +160,7 @@ public class PaperweightRegen extends Regenerator {
                 .resolve(LevelResource.DATA.id()), server.getFixerUpper(), server.registryAccess());
 
         //init world
-        freshWorld = Fawe.instance().getQueueHandler().sync((Supplier<ServerLevel>) () -> new ServerLevel(
+        Supplier<ServerLevel> createWorld = () -> new ServerLevel(
                 server,
                 Util.backgroundExecutor(),
                 session,
@@ -212,7 +213,12 @@ public class PaperweightRegen extends Regenerator {
             ) {
                 // noop, paper
             }
-        }).get();
+        };
+        if (FoliaSupport.isFolia()) {
+            freshWorld = TaskManager.taskManager().syncGlobal(createWorld);
+        } else {
+            freshWorld = Fawe.instance().getQueueHandler().sync(createWorld).get();
+        }
         freshWorld.noSave = true;
         removeWorldFromWorldsMap();
         if (paperConfigField != null) {
@@ -230,20 +236,35 @@ public class PaperweightRegen extends Regenerator {
 
         //shutdown chunk provider
         try {
-            Fawe.instance().getQueueHandler().sync(() -> {
+            Runnable closeChunk = () -> {
                 try {
                     freshWorld.getChunkSource().getDataStorage().cache.clear();
                     freshWorld.getChunkSource().close(false);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-            });
+            };
+            if (FoliaSupport.isFolia()) {
+                TaskManager.taskManager().syncGlobal(() -> {
+                    closeChunk.run();
+                    return null;
+                });
+            } else {
+                Fawe.instance().getQueueHandler().sync(closeChunk);
+            }
         } catch (Exception ignored) {
         }
 
         //remove world from server
         try {
-            Fawe.instance().getQueueHandler().sync(this::removeWorldFromWorldsMap);
+            if (FoliaSupport.isFolia()) {
+                TaskManager.taskManager().syncGlobal(() -> {
+                    this.removeWorldFromWorldsMap();
+                    return null;
+                });
+            } else {
+                Fawe.instance().getQueueHandler().sync(this::removeWorldFromWorldsMap);
+            }
         } catch (Exception ignored) {
         }
 
